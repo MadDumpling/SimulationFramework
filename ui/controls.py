@@ -24,3 +24,11 @@ class SimulationUI:
                 "Paused",
                 self.paused,
             )
+            for parameter in simulation.parameters.values():
+
+                parameter.value = gui.slider_float(
+                    parameter.name,
+                    parameter.value,
+                    parameter.min,
+                    parameter.max,
+                )

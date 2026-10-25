@@ -1,6 +1,3 @@
-import taichi as ti
-
-
 class SimulationUI:
     def __init__(self):
         self.paused = False
@@ -10,22 +7,30 @@ class SimulationUI:
 
         with gui.sub_window(
             "Controls",
-            0.02, 0.02,
-            0.25, 0.3
+            0.02,
+            0.02,
+            0.25,
+            0.45,
         ):
-            gui.text("Simulation Controls")
+            gui.text("Simulation Framework")
 
             if gui.button("Reset"):
                 simulation.reset()
 
             self.paused = gui.checkbox(
                 "Paused",
-                self.paused
+                self.paused,
             )
 
-            simulation.gravity = gui.slider_float(
-                "Gravity",
-                simulation.gravity,
-                0.0,
-                20.0
-            )
+            gui.separator()
+            gui.text(
+        f"Parameters: {len(simulation.parameters)}"
+        )
+            for parameter in simulation.parameters.values():
+
+                parameter.value = gui.slider_float(
+                    parameter.name,
+                    parameter.value,
+                    parameter.min,
+                    parameter.max,
+                )
