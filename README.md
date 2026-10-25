@@ -429,3 +429,262 @@ Core libraries:
 - Always have a stable demo preset.
 - Track FPS and simulation statistics.
 - Favor reliability over complexity.
+
+# Framework Progress
+
+## Version 0.1 - Initial Framework
+
+### Completed Features
+
+#### Simulation Architecture
+
+Moved simulation logic out of `app.py`.
+
+Before:
+
+```text
+app.py
+ ├─ physics
+ ├─ rendering
+ ├─ ui
+ └─ window
+```
+
+After:
+
+```text
+app.py
+ ├─ application lifecycle
+ ├─ main loop
+ └─ simulation orchestration
+
+simulations/
+ └─ bouncing_balls.py
+```
+
+Benefits:
+
+- Simulations are isolated
+- Easy to add new simulations
+- Cleaner project structure
+
+---
+
+#### Simulation Package
+
+Added:
+
+```text
+simulations/
+├── __init__.py
+├── base.py
+└── bouncing_balls.py
+```
+
+Purpose:
+
+- Encapsulate simulation implementations
+- Support multiple simulation types
+
+Future:
+
+```text
+boids.py
+fluid.py
+cloth.py
+reaction_diffusion.py
+```
+
+---
+
+#### UI Package
+
+Added:
+
+```text
+ui/
+├── __init__.py
+└── controls.py
+```
+
+Purpose:
+
+- Separate UI from simulation logic
+- Centralized framework controls
+
+Current Controls:
+
+- Pause
+- Reset
+
+Future Controls:
+
+- FPS counter
+- Screenshot
+- Recording
+- Simulation selector
+
+---
+
+#### Parameter System
+
+Added:
+
+```python
+class Parameter
+```
+
+in:
+
+```text
+parameters.py
+```
+
+Purpose:
+
+- Define editable simulation values
+- Automatically generate UI controls
+
+Example:
+
+```python
+Parameter(
+    "Gravity",
+    9.8,
+    0.0,
+    20.0,
+)
+```
+
+---
+
+#### Automatic Parameter UI
+
+Parameters are stored in:
+
+```python
+self.parameters
+```
+
+Example:
+
+```python
+self.parameters = {
+    "gravity": Parameter(...),
+    "radius": Parameter(...),
+    "damping": Parameter(...),
+}
+```
+
+The UI automatically creates sliders for all parameters:
+
+```python
+for parameter in simulation.parameters.values():
+```
+
+No UI changes are required when adding new parameters.
+
+Benefits:
+
+- Rapid iteration
+- Reusable framework
+- Less duplicated code
+
+---
+
+#### Parameter-Driven Simulation
+
+Removed hardcoded values:
+
+Before:
+
+```python
+9.8
+0.9
+0.01
+```
+
+After:
+
+```python
+self.parameters["gravity"].value
+self.parameters["damping"].value
+self.parameters["radius"].value
+```
+
+Benefits:
+
+- Runtime editing
+- Better experimentation
+- Hackathon-friendly workflow
+
+---
+
+#### Bouncing Balls Demo
+
+Implemented:
+
+- Particle initialization
+- Gravity
+- Ground collision
+- Damping
+- Runtime parameter editing
+
+Purpose:
+
+- Validate framework architecture
+- Test UI integration
+- Test Taichi rendering pipeline
+
+---
+
+## Current Architecture
+
+```text
+SimulationHackathonFramework/
+│
+├── app.py
+├── parameters.py
+│
+├── simulations/
+│   ├── __init__.py
+│   ├── base.py
+│   └── bouncing_balls.py
+│
+├── ui/
+│   ├── __init__.py
+│   └── controls.py
+│
+├── tests/
+│
+├── requirements.txt
+├── README.md
+└── pyproject.toml
+```
+
+---
+
+## Next Milestones
+
+### Framework
+
+- [ ] FPS display
+- [ ] Keyboard shortcuts
+- [ ] Simulation registry
+- [ ] Simulation dropdown
+- [ ] Screenshot export
+- [ ] Video recording
+
+### Simulations
+
+- [ ] Boids
+- [ ] Particle Life
+- [ ] Reaction Diffusion
+- [ ] Fluid Solver
+- [ ] Cloth Simulation
+
+### Quality
+
+- [ ] Additional tests
+- [ ] Configuration presets
+- [ ] Save/load parameter profiles
