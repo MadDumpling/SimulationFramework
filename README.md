@@ -61,6 +61,176 @@ Windows PowerShell:
 .venv\Scripts\Activate.ps1
 ```
 
+## Visual Studio Setup (Windows)
+
+### Prerequisites
+
+Install:
+
+- Python 3.11+
+- Visual Studio with Python Development workload
+- Git (optional)
+
+Verify Python is installed:
+
+```powershell
+python --version
+```
+
+or
+
+```powershell
+py --version
+```
+
+---
+
+### Create a Virtual Environment
+
+Open a terminal in the project root:
+
+```powershell
+python -m venv .venv
+```
+
+If that fails:
+
+```powershell
+py -m venv .venv
+```
+
+This creates a local virtual environment in:
+
+```text
+.venv/
+```
+
+---
+
+### Activate the Virtual Environment
+
+PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+You should now see:
+
+```text
+(.venv) PS C:\...\SimulationHackathonFramework>
+```
+
+---
+
+### Install Dependencies
+
+```powershell
+python -m pip install --upgrade pip
+
+pip install -r requirements.txt
+```
+
+---
+
+### Configure Visual Studio
+
+1. Open the project folder.
+2. Open **Python Environments**.
+3. Select the `.venv` environment.
+4. Set `app.py` as the startup file.
+
+---
+
+### Running the Application
+
+From Visual Studio:
+
+- Press **F5** to run with debugging.
+- Press **Ctrl + F5** to run without debugging.
+
+Or from the terminal:
+
+```powershell
+python app.py
+```
+
+---
+
+### Running Tests
+
+Run all tests:
+
+```powershell
+pytest
+```
+
+Verbose output:
+
+```powershell
+pytest -v
+```
+
+Coverage:
+
+```powershell
+pytest --cov
+```
+
+---
+
+### Common Issues
+
+#### PowerShell Execution Policy
+
+If activation fails with an execution policy error:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Then activate again:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+#### Virtual Environment Not Found
+
+Make sure you have created it first:
+
+```powershell
+python -m venv .venv
+```
+
+#### Requirements Installation Fails
+
+Upgrade pip and retry:
+
+```powershell
+python -m pip install --upgrade pip
+
+pip install -r requirements.txt
+```
+
+---
+
+### Verify Installation
+
+Run:
+
+```powershell
+python -c "import taichi as ti; print(ti.__version__)"
+```
+
+Expected output:
+
+```text
+1.x.x
+```
+
+If a version number is displayed, Taichi is installed correctly.
+
 ### Run
 
 ```bash
