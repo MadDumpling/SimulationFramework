@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# IDE 
+.vs/
+[Db]in/
+[Oo]bj/
+*.suo
+*.user
