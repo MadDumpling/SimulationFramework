@@ -1,23 +1,38 @@
 import taichi as ti
 
-from simulations.bouncing_balls import BouncingBalls
+from simulations import BouncingBalls
+from ui import SimulationUI
 
-ti.init(arch=ti.gpu)
 
-window = ti.ui.Window(
-    "Simulation Framework",
-    (1280, 720)
-)
+def main():
+    ti.init(arch=ti.gpu)
 
-canvas = window.get_canvas()
+    window = ti.ui.Window(
+        "Simulation Framework",
+        (1920, 1080),
+        vsync=True,
+    )
 
-simulation = BouncingBalls()
+    canvas = window.get_canvas()
 
-while window.running:
+    simulation = BouncingBalls()
+    ui = SimulationUI()
 
-    simulation.step()
+    while window.running:
 
-    canvas.set_background_color((0.05, 0.05, 0.08))
-    simulation.render(canvas)
+        ui.draw(window, simulation)
 
-    window.show()
+        if not ui.paused:
+            simulation.step()
+
+        canvas.set_background_color(
+            (0.05, 0.05, 0.08)
+        )
+
+        simulation.render(canvas)
+
+        window.show()
+
+
+if __name__ == "__main__":
+    main()
