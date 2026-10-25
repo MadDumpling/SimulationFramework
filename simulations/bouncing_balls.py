@@ -4,6 +4,7 @@ from simulations.base import Simulation
 
 N = 500
 
+@ti.data_oriented
 class BouncingBalls(Simulation):
 
     def __init__(self):
