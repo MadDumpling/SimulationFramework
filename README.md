@@ -273,29 +273,115 @@ pytest --cov
 
 ## Creating a New Simulation
 
-Extend the base Simulation class:
+### 1. Create a Simulation Class
 
-```python
-class Simulation:
-    def __init__(self):
-        pass
+Inside `simulations/` create a new file:
 
-    def step(self):
-        pass
-
-    def render(self):
-        pass
-
-    def reset(self):
-        pass
+```text
+simulations/
+└── my_simulation.py
 ```
 
-Implement your simulation logic inside:
+Example:
 
-- `step()` for physics updates
-- `render()` for visualization
-- `reset()` for initialization
+```python
+from simulations.base import Simulation
 
+class MySimulation(Simulation):
+    pass
+```
+
+---
+
+### 2. Define Editable Parameters
+
+Create parameters inside `__init__`:
+
+```python
+from parameters import Parameter
+
+self.parameters = {
+    "speed": Parameter(
+        "Speed",
+        10.0,
+        0.0,
+        50.0,
+    ),
+    "radius": Parameter(
+        "Radius",
+        0.01,
+        0.001,
+        0.05,
+    ),
+}
+```
+
+Each parameter automatically generates a UI slider.
+
+---
+
+### 3. Use Parameters in Simulation Logic
+
+Access parameter values through:
+
+```python
+speed = self.parameters["speed"].value
+radius = self.parameters["radius"].value
+```
+
+Example:
+
+```python
+def step(self):
+    speed = self.parameters["speed"].value
+
+    self._step(speed)
+```
+
+---
+
+### 4. Implement Required Methods
+
+```python
+def reset(self):
+    pass
+
+def step(self):
+    pass
+
+def render(self, canvas):
+    pass
+```
+
+---
+
+### 5. Register the Simulation
+
+Edit:
+
+```python
+simulations/__init__.py
+```
+
+```python
+from .my_simulation import MySimulation
+```
+
+---
+
+### 6. Launch It
+
+In `app.py`:
+
+```python
+simulation = MySimulation()
+```
+
+The UI will automatically display all parameters defined in:
+
+```python
+self.parameters
+```
 ## Configuration
 
 Simulation presets live in:
