@@ -1,4 +1,4 @@
-taichi==1.7.3
+taichi==1.7.4
 dearpygui==1.10.0
 
 numpy==1.26.4
