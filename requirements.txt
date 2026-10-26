@@ -1,5 +1,5 @@
 taichi==1.7.4
-dearpygui==1.10.0
+dearpygui==2.1.1
 
 numpy==1.26.4
 pandas==2.0.3
