@@ -1,8 +1,9 @@
+#ui.py
 class SimulationUI:
     def __init__(self):
         self.paused = False
 
-    def draw(self, window, simulation):
+    def draw(self, window, simulation, camera):
         gui = window.get_gui()
 
         with gui.sub_window(
@@ -14,9 +15,10 @@ class SimulationUI:
         ):
             gui.text("Simulation Framework")
 
-            if gui.button("Reset"):
+            if gui.button("Reset Simulation"):
                 simulation.reset()
-
+            if gui.button("Reset Camera"):
+                camera.reset()
             self.paused = gui.checkbox(
                 "Paused",
                 self.paused,

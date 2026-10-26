@@ -43,7 +43,11 @@ class BouncingBalls(Simulation):
             ti.f32,
             shape=N
         )
-
+        self.render_positions = ti.Vector.field(
+            2,
+            ti.f32,
+            shape=N
+        )
         self.reset()
 
     @ti.kernel
@@ -80,7 +84,21 @@ class BouncingBalls(Simulation):
             if self.positions[i].y < self.parameters["radius"].value:
                 self.positions[i].y = self.parameters["radius"].value
                 self.velocities[i].y *= -damping
+    @ti.kernel
+    def update_render_positions(
+        self,
+        offset_x: ti.f32,
+        offset_y: ti.f32,
+        zoom: ti.f32
+    ):
+        for i in self.positions:
 
+            p = self.positions[i]
+
+            p = (p - ti.Vector([offset_x, offset_y])) * zoom
+            p += ti.Vector([0.5, 0.5])
+
+            self.render_positions[i] = p
     def step(self):
 
         gravity = self.parameters["gravity"].value
@@ -90,13 +108,17 @@ class BouncingBalls(Simulation):
             gravity,
             damping
         )
+    
+    def render(self, canvas, camera):
 
-    def render(self, canvas):
-
-        radius = self.parameters["radius"].value
+        self.update_render_positions(
+            camera.offset[0],
+            camera.offset[1],
+            camera.zoom
+        )
 
         canvas.circles(
-            self.positions,
-            radius=radius,
+            self.render_positions,
+            radius=self.parameters["radius"].value * camera.zoom,
             color=(0.2, 0.8, 1.0)
         )

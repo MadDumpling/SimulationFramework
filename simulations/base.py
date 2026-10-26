@@ -11,5 +11,5 @@ class Simulation(ABC):
         pass
 
     @abstractmethod
-    def render(self, canvas):
+    def render(self, canvas, camera):
         pass
