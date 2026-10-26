@@ -22,8 +22,11 @@ A reusable Python template for building interactive simulations with Taichi.
 ├── requirements.txt
 ├── pyproject.toml
 ├── setup.sh
+├── setup.ps1
 ├── run.sh
+├── run.ps1
 ├── test.sh
+├── test.ps1
 ├── presets/
 │   └── default.json
 ├── recordings/
@@ -53,6 +56,12 @@ cd sim-template
 ```bash
 chmod +x setup.sh
 ./setup.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\setup.ps1
 ```
 
 ### Activate Environment
@@ -163,6 +172,12 @@ Or from the terminal:
 python app.py
 ```
 
+Windows PowerShell:
+
+```powershell
+.\run.ps1
+```
+
 ---
 
 ### Running Tests
@@ -177,6 +192,12 @@ Verbose output:
 
 ```powershell
 pytest -v
+```
+
+Windows PowerShell:
+
+```powershell
+.\test.ps1
 ```
 
 Coverage:
@@ -238,6 +259,9 @@ Expected output:
 ```
 
 If a version number is displayed, Taichi is installed correctly.
+
+The application attempts to use the GPU first and automatically falls back to
+the CPU when a compatible GPU backend is unavailable.
 
 ### Run
 

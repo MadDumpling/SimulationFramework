@@ -5,7 +5,11 @@ from ui import SimulationUI
 from input import InputManager
 
 def main():
-    ti.init(arch=ti.gpu)
+    try:
+        ti.init(arch=ti.gpu)
+    except RuntimeError as error:
+        print(f"GPU initialization failed ({error}). Falling back to CPU.")
+        ti.init(arch=ti.cpu)
 
     window = ti.ui.Window(
         "Simulation Framework",
