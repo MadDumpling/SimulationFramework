@@ -14,7 +14,7 @@ class SimulationUI:
         self.slider_themes = {}
 
         self.CELESTIAL_MILESTONES = {
-            "Moon 🌕": 1.62,
+            "Moon 🌚": 1.62,
             "Mars 🔴": 3.71,
             "Earth 🌍": 9.81
         }
