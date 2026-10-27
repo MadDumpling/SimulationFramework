@@ -32,9 +32,15 @@ def main():
     canvas = window.get_canvas()
 
     # Create initial simulation from registry
-    simulation = SIMULATIONS[
+    from simulation_manager import (
+        SimulationManager
+    )
+
+    manager = SimulationManager()
+
+    manager.load(
         "Bouncing Balls"
-    ]()
+    )
 
     ui = SimulationUI()
 
@@ -53,18 +59,18 @@ def main():
 
         ui.draw(
             window,
-            simulation,
+            manager.current,
             input_manager.camera,
         )
 
         if not ui.paused:
-            simulation.step()
+            manager.step()
 
         canvas.set_background_color(
             (0.05, 0.05, 0.08)
         )
 
-        simulation.render(
+        manager.render(
             canvas,
             input_manager.camera,
         )
