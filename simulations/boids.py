@@ -21,29 +21,35 @@ class Boids(Simulation):
         super().__init__()
 
         self.parameters = {
-            "cohesion": Parameter(
-                "Cohesion",
-                0.5,
+            "separation": Parameter(
+                "Separation",
+                1.5,
                 0.0,
-                2.0,
+                5.0,
             ),
             "alignment": Parameter(
                 "Alignment",
-                0.5,
-                0.0,
-                2.0,
-            ),
-            "separation": Parameter(
-                "Separation",
                 1.0,
                 0.0,
-                3.0,
+                5.0,
             ),
-            "speed": Parameter(
-                "Speed",
-                0.5,
+            "cohesion": Parameter(
+                "Cohesion",
+                1.0,
+                0.0,
+                5.0,
+            ),
+            "neighbor_radius": Parameter(
+                "Neighbor Radius",
+                0.08,
+                0.01,
+                0.2,
+            ),
+            "max_speed": Parameter(
+                "Max Speed",
+                1.0,
                 0.1,
-                3.0,
+                5.0,
             ),
             "radius": Parameter(
                 "Radius",
@@ -99,38 +105,147 @@ class Boids(Simulation):
     @ti.kernel
     def _step(
         self,
-        speed: ti.f32,
+        separation_strength: ti.f32,
+        alignment_strength: ti.f32,
+        cohesion_strength: ti.f32,
+        neighbor_radius: ti.f32,
+        max_speed: ti.f32,
     ):
 
-        for i in self.positions:
+        for i in range(N):
+
+            separation = ti.Vector([
+                0.0,
+                0.0,
+            ])
+
+            alignment = ti.Vector([
+                0.0,
+                0.0,
+            ])
+
+            cohesion = ti.Vector([
+                0.0,
+                0.0,
+            ])
+
+            count = 0
+
+            for j in range(N):
+
+                if i == j:
+                    continue
+
+                diff = (
+                    self.positions[j]
+                    - self.positions[i]
+                )
+
+                dist = diff.norm()
+
+                if (
+                    dist > 0.0
+                    and
+                    dist < neighbor_radius
+                ):
+
+                    count += 1
+
+                    alignment += (
+                        self.velocities[j]
+                    )
+
+                    cohesion += (
+                        self.positions[j]
+                    )
+
+                    separation -= (
+                        diff
+                        /
+                        (dist + 0.001)
+                    )
+
+            if count > 0:
+
+                alignment /= count
+                cohesion /= count
+
+                cohesion -= (
+                    self.positions[i]
+                )
+
+                self.velocities[i] += (
+                    separation
+                    * separation_strength
+                    * 0.01
+                )
+
+                self.velocities[i] += (
+                    alignment
+                    * alignment_strength
+                    * 0.01
+                )
+
+                self.velocities[i] += (
+                    cohesion
+                    * cohesion_strength
+                    * 0.01
+                )
+
+            speed = (
+                self.velocities[i]
+                .norm()
+            )
+
+            if speed > max_speed:
+
+                self.velocities[i] = (
+                    self.velocities[i]
+                    /
+                    speed
+                    * max_speed
+                )
 
             self.positions[i] += (
                 self.velocities[i]
-                * speed
-                * 0.002
+                * 0.005
             )
 
-            if self.positions[i].x < 0.0:
-                self.positions[i].x += 1.0
+            if self.positions[i].x < 0:
+                self.positions[i].x += 1
 
-            if self.positions[i].x > 1.0:
-                self.positions[i].x -= 1.0
+            if self.positions[i].x > 1:
+                self.positions[i].x -= 1
 
-            if self.positions[i].y < 0.0:
-                self.positions[i].y += 1.0
+            if self.positions[i].y < 0:
+                self.positions[i].y += 1
 
-            if self.positions[i].y > 1.0:
-                self.positions[i].y -= 1.0
+            if self.positions[i].y > 1:
+                self.positions[i].y -= 1
 
     def step(self):
 
-        speed = (
-            self.parameters["speed"]
-            .value
+        self._step(
+            self.parameters[
+                "separation"
+            ].value,
+
+            self.parameters[
+                "alignment"
+            ].value,
+
+            self.parameters[
+                "cohesion"
+            ].value,
+
+            self.parameters[
+                "neighbor_radius"
+            ].value,
+
+            self.parameters[
+                "max_speed"
+            ].value,
         )
-
-        self._step(speed)
-
     @ti.kernel
     def update_render_positions(
         self,
