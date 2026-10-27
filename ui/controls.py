@@ -49,6 +49,8 @@ class SimulationUI:
 
         self.build_controls()
 
+        self.build_metrics()
+
         self.rebuild_parameter_ui()
 
     def build_controls(self):
@@ -59,7 +61,7 @@ class SimulationUI:
         ):
 
             dpg.add_text(
-                "Simulation Framework"
+                "Simulation Framework",
             )
 
             dpg.add_text(
@@ -87,7 +89,7 @@ class SimulationUI:
             dpg.add_separator()
 
             dpg.add_text(
-                "Simulation"
+                "Simulation",
             )
 
             dpg.add_combo(
@@ -114,12 +116,63 @@ class SimulationUI:
             dpg.add_separator()
 
             dpg.add_text(
-                "Parameters"
+                "Parameters",
             )
 
             dpg.add_group(
-                tag="parameter_container"
+                tag="parameter_container",
             )
+
+    def build_metrics(self):
+
+        with dpg.window(
+            label="Metrics",
+            tag="metrics_window",
+        ):
+
+            with dpg.plot(
+                label="FPS",
+                height=200,
+                width=-1,
+            ):
+
+                dpg.add_plot_axis(
+                    dpg.mvXAxis,
+                    label="Frame",
+                )
+
+                with dpg.plot_axis(
+                    dpg.mvYAxis,
+                    label="FPS",
+                ):
+
+                    dpg.add_line_series(
+                        [0],
+                        [0],
+                        tag="fps_series",
+                    )
+
+            with dpg.plot(
+                label="Frame Time",
+                height=200,
+                width=-1,
+            ):
+
+                dpg.add_plot_axis(
+                    dpg.mvXAxis,
+                    label="Frame",
+                )
+
+                with dpg.plot_axis(
+                    dpg.mvYAxis,
+                    label="ms",
+                ):
+
+                    dpg.add_line_series(
+                        [0],
+                        [0],
+                        tag="frame_time_series",
+                    )
 
     def toggle_pause(
         self,
@@ -127,6 +180,7 @@ class SimulationUI:
         app_data,
         user_data,
     ):
+
         self.paused = app_data
 
     def change_simulation(
@@ -160,12 +214,13 @@ class SimulationUI:
         app_data,
         parameter,
     ):
+
         parameter.value = app_data
 
     def rebuild_parameter_ui(self):
 
         if not dpg.does_item_exist(
-            "parameter_container"
+            "parameter_container",
         ):
             return
 

@@ -5,9 +5,12 @@ def create_dockspace():
 
     with dpg.viewport_menu_bar():
 
-        with dpg.menu(label="File"):
+        with dpg.menu(
+            label="File",
+        ):
+
             dpg.add_menu_item(
-                label="Exit"
+                label="Exit",
             )
 
     with dpg.window(
@@ -25,14 +28,16 @@ def create_dockspace():
         label="Simulation",
         tag="simulation_window",
     ):
+
         dpg.add_text(
-            "Simulation Viewport"
+            "Simulation Viewport",
         )
 
     with dpg.window(
         label="Console",
         tag="console_window",
     ):
+
         dpg.add_text(
-            "Console"
+            "Console",
         )

@@ -4,16 +4,20 @@ from input import InputManager
 
 from core import EventBus
 
+from core.performance import (
+    PerformanceMonitor,
+)
+
+from core.metrics import (
+    MetricsManager,
+)
+
 from simulation_manager import (
     SimulationManager,
 )
 
 from rendering import (
     TaichiRenderer,
-)
-
-from core.performance import (
-    PerformanceMonitor,
 )
 
 from .controls import SimulationUI
@@ -25,6 +29,16 @@ class SimulationApplication:
 
         self.events = EventBus()
 
+        self.metrics = MetricsManager()
+
+        self.metrics.register(
+            "fps"
+        )
+
+        self.metrics.register(
+            "frame_time"
+        )
+
         self.renderer = (
             TaichiRenderer()
         )
@@ -32,16 +46,9 @@ class SimulationApplication:
         self.manager = (
             SimulationManager()
         )
-        self.events.subscribe(
-            "preset.save",
-            self.manager.save_preset,
-        )
 
-        self.events.subscribe(
-            "preset.load",
-            self.manager.load_preset,
-        )
         # Simulation Events
+
         self.events.subscribe(
             "simulation.load",
             self.manager.load,
@@ -53,6 +60,7 @@ class SimulationApplication:
         )
 
         # Preset Events
+
         self.events.subscribe(
             "preset.save",
             self.manager.save_preset,
@@ -62,15 +70,7 @@ class SimulationApplication:
             "preset.load",
             self.manager.load_preset,
         )
-        self.events.subscribe(
-            "preset.save",
-            self.manager.save_preset,
-        )
 
-        self.events.subscribe(
-            "preset.load",
-            self.manager.load_preset,
-        )
         self.ui = SimulationUI(
             self.manager,
             self.events,
@@ -98,7 +98,73 @@ class SimulationApplication:
 
     def update(self):
 
+        #
+        # Performance
+        #
+
         self.performance.update()
+
+        self.metrics.record(
+            "fps",
+            self.performance.fps,
+        )
+
+        self.metrics.record(
+            "frame_time",
+            self.performance.frame_time,
+        )
+
+        #
+        # Graph Data
+        #
+
+        fps_values = (
+            self.metrics.get(
+                "fps"
+            )
+        )
+
+        frame_values = (
+            self.metrics.get(
+                "frame_time"
+            )
+        )
+
+        if len(fps_values) > 1:
+
+            fps_x = list(
+                range(
+                    len(fps_values)
+                )
+            )
+
+            dpg.set_value(
+                "fps_series",
+                [
+                    fps_x,
+                    fps_values,
+                ],
+            )
+
+        if len(frame_values) > 1:
+
+            frame_x = list(
+                range(
+                    len(frame_values)
+                )
+            )
+
+            dpg.set_value(
+                "frame_time_series",
+                [
+                    frame_x,
+                    frame_values,
+                ],
+            )
+
+        #
+        # Metrics Text
+        #
 
         dpg.set_value(
             "fps_text",
@@ -116,12 +182,21 @@ class SimulationApplication:
             ),
         )
 
+        #
+        # Input
+        #
+
         self.input_manager.update(
             self.renderer.window,
             disable_mouse_camera=False,
         )
 
+        #
+        # Simulation
+        #
+
         if not self.ui.paused:
+
             self.manager.step()
 
     def render(self):
