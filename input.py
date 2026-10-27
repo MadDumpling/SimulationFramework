@@ -24,8 +24,8 @@ class Camera:
 
         mouse = np.array(window.get_cursor_pos(), dtype=np.float32)
 
-        # Left mouse drag
-        if window.is_pressed(ti.ui.LMB):
+        # Right mouse drag keeps left-click UI interaction separate from the camera.
+        if window.is_pressed(ti.ui.RMB):
 
             if not self.dragging:
                 self.dragging = True

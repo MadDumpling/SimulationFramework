@@ -686,7 +686,363 @@ SimulationHackathonFramework/
 ```
 
 ---
+# Framework Progress
 
+## Version 0.2 - Plugin Architecture Foundation
+
+This milestone transitions the project from a single hardcoded simulation into a simulation framework capable of discovering and managing simulations dynamically.
+
+---
+
+# Completed Features
+
+## Simulation Architecture
+
+Simulation logic has been fully separated from application lifecycle management.
+
+### Application Responsibilities
+
+```text
+app.py
+├── Taichi initialization
+├── Window management
+├── Main loop
+├── Input processing
+├── Simulation orchestration
+└── UI orchestration
+```
+
+### Simulation Responsibilities
+
+```text
+simulations/
+├── base.py
+└── bouncing_balls.py
+```
+
+### Benefits
+
+- Clear separation of concerns
+- Easier maintenance
+- New simulations can be added independently
+- Foundation for plugins and scripting
+
+---
+
+## Base Simulation Interface
+
+All simulations inherit from:
+
+```python
+class Simulation(ABC):
+```
+
+Required methods:
+
+```python
+reset()
+step()
+render(canvas, camera)
+```
+
+Metadata support:
+
+```python
+name
+author
+version
+```
+
+Example:
+
+```python
+class BouncingBalls(Simulation):
+    name = "Bouncing Balls"
+    author = "You"
+    version = "0.1"
+```
+
+### Benefits
+
+- Standardized simulation contract
+- Consistent behavior across simulations
+- Automatic registration support
+
+---
+
+## Parameter System
+
+Framework-level parameter abstraction:
+
+```python
+class Parameter:
+```
+
+Example:
+
+```python
+Parameter(
+    "Gravity",
+    9.8,
+    0.0,
+    20.0
+)
+```
+
+Current usage:
+
+```python
+self.parameters = {
+    "gravity": Parameter(...),
+    "damping": Parameter(...),
+    "radius": Parameter(...),
+}
+```
+
+### Benefits
+
+- Runtime editing
+- UI auto-generation
+- Future preset serialization
+- Future scripting support
+
+---
+
+## Automatic Parameter UI
+
+UI controls are generated automatically.
+
+Example:
+
+```python
+for parameter in simulation.parameters.values():
+```
+
+The framework creates:
+
+```text
+Gravity Slider
+Damping Slider
+Radius Slider
+```
+
+without requiring custom UI code.
+
+### Benefits
+
+- Rapid development
+- Minimal boilerplate
+- Scales to future simulations
+
+---
+
+## Simulation Registry
+
+Added:
+
+```text
+registry.py
+```
+
+### Purpose
+
+- Central storage of available simulations
+- Automatic simulation discovery
+- Dynamic instantiation
+
+Registry structure:
+
+```python
+SIMULATIONS = {}
+```
+
+Example registration:
+
+```python
+@register_simulation
+class BouncingBalls(Simulation):
+    ...
+```
+
+Result:
+
+```python
+SIMULATIONS = {
+    "Bouncing Balls": BouncingBalls
+}
+```
+
+### Benefits
+
+- No hardcoded simulation lists
+- Dynamic framework discovery
+- Required for plugins and hot reloading
+
+---
+
+## Plugin Loader
+
+Added:
+
+```text
+plugin_loader.py
+```
+
+### Purpose
+
+- Discover simulations automatically
+- Import simulation modules dynamically
+- Populate the simulation registry
+
+Example:
+
+```python
+load_simulations()
+```
+
+Loader scans:
+
+```text
+simulations/
+├── bouncing_balls.py
+├── boids.py
+├── fluid.py
+└── cloth.py
+```
+
+Every discovered simulation is automatically registered.
+
+### Benefits
+
+- Zero manual registration
+- Plugin architecture foundation
+- Future drop-in simulation support
+
+---
+
+## Plugin-Based Simulation Creation
+
+Simulations can now be created through the registry.
+
+Example:
+
+```python
+simulation = SIMULATIONS[
+    "Bouncing Balls"
+]()
+```
+
+Future:
+
+```python
+simulation = create_simulation(
+    "Boids"
+)
+```
+
+### Benefits
+
+- Dynamic simulation switching
+- No direct imports required
+- Supports UI-driven selection
+
+---
+
+## Bouncing Balls Demo
+
+Current reference simulation.
+
+### Implemented
+
+- Particle initialization
+- Gravity
+- Ground collision
+- Damping
+- Camera support
+- Runtime parameter editing
+
+### Purpose
+
+- Validate architecture
+- Validate registry system
+- Validate plugin loading
+- Validate parameter framework
+
+---
+
+## Testing Infrastructure
+
+Added:
+
+```text
+tests/
+```
+
+Framework now includes automated tests.
+
+### Registry
+
+```text
+✓ Simulation registration
+✓ Registry population
+```
+
+### Plugin Loading
+
+```text
+✓ Dynamic discovery
+✓ Import loading
+```
+
+### Parameters
+
+```text
+✓ Parameter creation
+✓ Parameter storage
+```
+
+### Simulation Metadata
+
+```text
+✓ Name
+✓ Author
+✓ Version
+```
+
+### Simulation Creation
+
+```text
+✓ Registry-based instantiation
+```
+
+### UI Controls
+
+```text
+✓ Control state management
+✓ Pause functionality
+```
+
+### Current Status
+
+```text
+10/10 tests passing
+```
+
+---
+
+# Current Architecture
+
+```text
+SimulationHackathonFramework/
+│
+├── app.py
+├── registry.py
+├── plugin_loader.py
+├── parameters.py
+│
+├── simulations/
+│   ├── __init__.py
+│ 
 ## Next Milestones
 
 ### Framework
@@ -705,6 +1061,30 @@ SimulationHackathonFramework/
 - [ ] Reaction Diffusion
 - [ ] Fluid Solver
 - [ ] Cloth Simulation
+
+### ROADMAP
+
+v0.2
+ - Simulation Registry
+ - Plugin System (pluggy)
+ - Save/Load Presets
+ - FPS Counter
+ - Screenshots
+v0.3
+ - Replay System
+ - Serialization
+ - Timeline Scrubber
+ - Recording
+v0.4
+ - Embedded Python Runtime
+ - Hot Reloading (watchdog)
+ - API Introspection
+v0.5
+ - Script Templates
+ - Integrated Documentation
+v1.0
+ - Node Editor
+ - Drag-and-Drop Simulation Graph
 
 ### Quality
 
