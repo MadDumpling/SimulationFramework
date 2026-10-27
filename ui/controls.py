@@ -1,6 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from registry import SIMULATIONS
+from .layout import create_dockspace
 
 
 class SimulationUI:
@@ -10,12 +11,19 @@ class SimulationUI:
         self.manager = simulation_manager
         self.paused = False
 
-        dpg.create_context()
+    def build(self):
+
+        create_dockspace()
+
+        self.build_controls()
+
+        self.rebuild_parameter_ui()
+
+    def build_controls(self):
 
         with dpg.window(
             label="Controls",
-            width=400,
-            height=700,
+            tag="controls_window",
         ):
 
             dpg.add_text(
@@ -51,22 +59,13 @@ class SimulationUI:
 
             dpg.add_separator()
 
-            dpg.add_text("Parameters")
+            dpg.add_text(
+                "Parameters"
+            )
 
             dpg.add_group(
                 tag="parameter_container"
             )
-
-        dpg.create_viewport(
-            title="Controls",
-            width=400,
-            height=700,
-        )
-
-        dpg.setup_dearpygui()
-        dpg.show_viewport()
-
-        self.rebuild_parameter_ui()
 
     def toggle_pause(
         self,
@@ -103,6 +102,11 @@ class SimulationUI:
         parameter.value = app_data
 
     def rebuild_parameter_ui(self):
+
+        if not dpg.does_item_exist(
+            "parameter_container"
+        ):
+            return
 
         dpg.delete_item(
             "parameter_container",

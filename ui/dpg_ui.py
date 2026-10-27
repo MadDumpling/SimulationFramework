@@ -1,4 +1,4 @@
-import dearpygui.dearpygui as dpg
+"""import dearpygui.dearpygui as dpg
 
 from registry import SIMULATIONS
 
@@ -131,3 +131,4 @@ class SimulationUI:
 
     def shutdown(self):
         dpg.destroy_context()
+        """

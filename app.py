@@ -41,7 +41,7 @@ def main():
     )
 
     ui = SimulationUI(manager)
-
+    ui.build()
     input_manager = InputManager()
 
     while window.running:
