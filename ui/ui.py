@@ -2,9 +2,16 @@
 class SimulationUI:
     def __init__(self):
         self.paused = False
+        self.selected_simualation = None
 
     def draw(self, window, simulation, camera):
         gui = window.get_gui()
+        gui.text("Simulation")
+
+        selected = gui.combo(
+            "Simulation",
+            self.available_simulations,
+        )
 
         with gui.sub_window(
             "Controls",
