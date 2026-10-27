@@ -21,13 +21,13 @@ class SimulationUI:
             "Earth 🌍": 9.81
         }
 
-        # Set up global keyboard listener for left/right arrow adjustments
-        with dpg.handler_block():
+        # Set up global keyboard listener using the correct registry method
+        with dpg.add_handler_registry():
             dpg.add_key_press_handler(
-                dpg.mvKey_Left, callback=self._handle_arrow_navigation, user_data="down"
+                key=dpg.mvKey_Left, callback=self._handle_arrow_navigation, user_data="down"
             )
             dpg.add_key_press_handler(
-                dpg.mvKey_Right, callback=self._handle_arrow_navigation, user_data="up"
+                key=dpg.mvKey_Right, callback=self._handle_arrow_navigation, user_data="up"
             )
 
     def save_preset(self, sender, app_data, user_data):
