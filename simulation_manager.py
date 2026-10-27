@@ -1,6 +1,8 @@
 from registry import create_simulation
-
-
+from core.serialization import (
+    save_preset,
+    load_preset,
+)
 class SimulationManager:
     """
     Manages the currently active simulation.
@@ -19,7 +21,7 @@ class SimulationManager:
 
     def __init__(self):
         self.current = None
-
+        self.instances = {}
     def load(self, simulation_name):
         """
         Load a simulation by name.
@@ -28,9 +30,19 @@ class SimulationManager:
             manager.load("Bouncing Balls")
         """
 
-        self.current = create_simulation(
+        if (
             simulation_name
-        )
+            not in self.instances
+        ):
+            self.instances[
+                simulation_name
+            ] = create_simulation(
+                simulation_name
+            )
+
+        self.current = self.instances[
+            simulation_name
+        ]
 
     def reset(self):
         """
@@ -57,4 +69,28 @@ class SimulationManager:
             self.current.render(
                 canvas,
                 camera,
+            )
+    def save_preset(
+        self,
+        filepath,
+    ):
+
+        if self.current:
+
+            save_preset(
+                self.current,
+                filepath,
+            )
+
+
+    def load_preset(
+        self,
+        filepath,
+    ):
+
+        if self.current:
+
+            load_preset(
+                self.current,
+                filepath,
             )

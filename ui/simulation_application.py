@@ -23,7 +23,7 @@ class SimulationApplication:
 
     def __init__(self):
 
-        self.event_bus = EventBus()
+        self.events = EventBus()
 
         self.renderer = (
             TaichiRenderer()
@@ -32,11 +32,16 @@ class SimulationApplication:
         self.manager = (
             SimulationManager()
         )
-
-        self.events = (
-            self.event_bus
+        self.events.subscribe(
+            "preset.save",
+            self.manager.save_preset,
         )
 
+        self.events.subscribe(
+            "preset.load",
+            self.manager.load_preset,
+        )
+        # Simulation Events
         self.events.subscribe(
             "simulation.load",
             self.manager.load,
@@ -47,6 +52,25 @@ class SimulationApplication:
             self.manager.reset,
         )
 
+        # Preset Events
+        self.events.subscribe(
+            "preset.save",
+            self.manager.save_preset,
+        )
+
+        self.events.subscribe(
+            "preset.load",
+            self.manager.load_preset,
+        )
+        self.events.subscribe(
+            "preset.save",
+            self.manager.save_preset,
+        )
+
+        self.events.subscribe(
+            "preset.load",
+            self.manager.load_preset,
+        )
         self.ui = SimulationUI(
             self.manager,
             self.events,

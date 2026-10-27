@@ -17,6 +17,32 @@ class SimulationUI:
 
         self.paused = False
 
+    def save_preset(
+        self,
+        sender,
+        app_data,
+        user_data,
+    ):
+
+        self.events.publish(
+            "preset.save",
+            "presets/test.json",
+        )
+
+    def load_preset(
+        self,
+        sender,
+        app_data,
+        user_data,
+    ):
+
+        self.events.publish(
+            "preset.load",
+            "presets/test.json",
+        )
+
+        self.rebuild_parameter_ui()
+
     def build(self):
 
         create_dockspace()
@@ -35,13 +61,27 @@ class SimulationUI:
             dpg.add_text(
                 "Simulation Framework"
             )
+
             dpg.add_text(
                 "FPS: 0",
                 tag="fps_text",
             )
+
             dpg.add_text(
                 "Frame Time: 0.00 ms",
                 tag="frame_time_text",
+            )
+
+            dpg.add_separator()
+
+            dpg.add_button(
+                label="Save Preset",
+                callback=self.save_preset,
+            )
+
+            dpg.add_button(
+                label="Load Preset",
+                callback=self.load_preset,
             )
 
             dpg.add_separator()
@@ -111,7 +151,7 @@ class SimulationUI:
     ):
 
         self.events.publish(
-            "simulation.reset"
+            "simulation.reset",
         )
 
     def update_parameter(
@@ -139,7 +179,9 @@ class SimulationUI:
         if simulation is None:
             return
 
-        for parameter in simulation.parameters.values():
+        for parameter in (
+            simulation.parameters.values()
+        ):
 
             dpg.add_slider_float(
                 label=parameter.name,
