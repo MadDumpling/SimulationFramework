@@ -706,6 +706,30 @@ SimulationHackathonFramework/
 - [ ] Fluid Solver
 - [ ] Cloth Simulation
 
+### ROADMAP
+
+v0.2
+ - Simulation Registry
+ - Plugin System (pluggy)
+ - Save/Load Presets
+ - FPS Counter
+ - Screenshots
+v0.3
+ - Replay System
+ - Serialization
+ - Timeline Scrubber
+ - Recording
+v0.4
+ - Embedded Python Runtime
+ - Hot Reloading (watchdog)
+ - API Introspection
+v0.5
+ - Script Templates
+ - Integrated Documentation
+v1.0
+ - Node Editor
+ - Drag-and-Drop Simulation Graph
+
 ### Quality
 
 - [ ] Additional tests
