@@ -35,6 +35,14 @@ class SimulationUI:
             dpg.add_text(
                 "Simulation Framework"
             )
+            dpg.add_text(
+                "FPS: 0",
+                tag="fps_text",
+            )
+            dpg.add_text(
+                "Frame Time: 0.00 ms",
+                tag="frame_time_text",
+            )
 
             dpg.add_separator()
 

@@ -17,5 +17,5 @@ def test_metadata():
 
     assert (
         BouncingBalls.version
-        == "0.1"
+        == "0.3"
     )

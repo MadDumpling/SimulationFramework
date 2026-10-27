@@ -1,3 +1,5 @@
+import dearpygui.dearpygui as dpg
+
 from input import InputManager
 
 from core import EventBus
@@ -8,6 +10,10 @@ from simulation_manager import (
 
 from rendering import (
     TaichiRenderer,
+)
+
+from core.performance import (
+    PerformanceMonitor,
 )
 
 from .controls import SimulationUI
@@ -27,7 +33,9 @@ class SimulationApplication:
             SimulationManager()
         )
 
-        self.events = self.event_bus
+        self.events = (
+            self.event_bus
+        )
 
         self.events.subscribe(
             "simulation.load",
@@ -48,6 +56,10 @@ class SimulationApplication:
             InputManager()
         )
 
+        self.performance = (
+            PerformanceMonitor()
+        )
+
     @property
     def running(self):
         return self.renderer.running
@@ -58,10 +70,27 @@ class SimulationApplication:
             "Bouncing Balls"
         )
 
-
         self.ui.build()
 
     def update(self):
+
+        self.performance.update()
+
+        dpg.set_value(
+            "fps_text",
+            (
+                f"FPS: "
+                f"{self.performance.fps:.1f}"
+            ),
+        )
+
+        dpg.set_value(
+            "frame_time_text",
+            (
+                f"Frame Time: "
+                f"{self.performance.frame_time:.2f} ms"
+            ),
+        )
 
         self.input_manager.update(
             self.renderer.window,

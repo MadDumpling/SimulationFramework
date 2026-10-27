@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from ui.controls import SimulationUI
 
@@ -24,21 +24,35 @@ class MockSimulationManager:
 
     def __init__(self):
         self.current = MockSimulation()
-        self.loaded_name = None
-        self.was_reset = False
 
     def load(self, name):
-        self.loaded_name = name
+        pass
 
     def reset(self):
-        self.was_reset = True
+        pass
+
+
+def create_ui():
+
+    manager = MockSimulationManager()
+
+    events = Mock()
+
+    ui = SimulationUI(
+        manager,
+        events,
+    )
+
+    return (
+        ui,
+        manager,
+        events,
+    )
 
 
 def test_pause_toggle():
 
-    manager = MockSimulationManager()
-
-    ui = SimulationUI(manager)
+    ui, _, _ = create_ui()
 
     ui.toggle_pause(
         None,
@@ -59,9 +73,7 @@ def test_pause_toggle():
 
 def test_parameter_update():
 
-    manager = MockSimulationManager()
-
-    ui = SimulationUI(manager)
+    ui, _, _ = create_ui()
 
     parameter = MockParameter()
 
@@ -76,9 +88,7 @@ def test_parameter_update():
 
 def test_reset_callback():
 
-    manager = MockSimulationManager()
-
-    ui = SimulationUI(manager)
+    ui, _, events = create_ui()
 
     ui.reset_simulation(
         None,
@@ -86,18 +96,18 @@ def test_reset_callback():
         None,
     )
 
-    assert manager.was_reset is True
+    events.publish.assert_called_once_with(
+        "simulation.reset"
+    )
 
 
 def test_change_simulation():
 
-    manager = MockSimulationManager()
-
-    ui = SimulationUI(manager)
+    ui, _, events = create_ui()
 
     with patch.object(
         ui,
-        "rebuild_parameter_ui"
+        "rebuild_parameter_ui",
     ) as mock_rebuild:
 
         ui.change_simulation(
@@ -106,9 +116,9 @@ def test_change_simulation():
             None,
         )
 
-    assert (
-        manager.loaded_name
-        == "Bouncing Balls"
+    events.publish.assert_called_once_with(
+        "simulation.load",
+        "Bouncing Balls",
     )
 
     mock_rebuild.assert_called_once()
