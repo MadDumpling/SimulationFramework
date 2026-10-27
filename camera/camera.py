@@ -1,6 +1,7 @@
 # camera.py
 
 import numpy as np
+import taichi as ti
 
 
 class Camera:
