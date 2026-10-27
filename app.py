@@ -1,77 +1,60 @@
 import taichi as ti
 
 from plugin_loader import load_simulations
-from registry import SIMULATIONS
 
-from ui import SimulationUI
-from input import InputManager
-from simulation_manager import (
-    SimulationManager
+from ui import (
+    Application,
+    SimulationApplication,
 )
 
 
-def main():
+def initialize_taichi():
 
     try:
-        ti.init(arch=ti.gpu)
+        ti.init(
+            arch=ti.gpu,
+        )
+
     except RuntimeError as error:
+
         print(
             f"GPU initialization failed ({error}). "
             "Falling back to CPU."
         )
-        ti.init(arch=ti.cpu)
+
+        ti.init(
+            arch=ti.cpu,
+        )
+
+
+def main():
+
+    initialize_taichi()
 
     load_simulations()
 
-    print("Registered simulations:")
-    print(SIMULATIONS)
+    app = Application()
 
-    window = ti.ui.Window(
-        "Simulation Framework",
-        (1920, 1080),
-        vsync=True,
+    app.initialize()
+
+    simulation_app = (
+        SimulationApplication()
     )
 
-    canvas = window.get_canvas()
+    simulation_app.initialize()
 
-    manager = SimulationManager()
+    while (
+        simulation_app.running
+        and app.running()
+    ):
 
-    manager.load(
-        "Bouncing Balls"
-    )
+        simulation_app.update()
 
-    ui = SimulationUI(manager)
-    ui.build()
-    input_manager = InputManager()
+        simulation_app.render()
 
-    while window.running:
+        app.render()
 
-        # Render DearPyGui frame
-        ui.render()
-
-        # Camera input
-        input_manager.update(
-            window,
-            disable_mouse_camera=False,
-        )
-
-        # Update simulation
-        if not ui.paused:
-            manager.step()
-
-        # Render simulation
-        canvas.set_background_color(
-            (0.05, 0.05, 0.08)
-        )
-
-        manager.render(
-            canvas,
-            input_manager.camera,
-        )
-
-        window.show()
-
-    ui.shutdown()
+    app.shutdown()
 
 
 if __name__ == "__main__":

@@ -6,9 +6,15 @@ from .layout import create_dockspace
 
 class SimulationUI:
 
-    def __init__(self, simulation_manager):
+    def __init__(
+        self,
+        simulation_manager,
+        events,
+    ):
 
         self.manager = simulation_manager
+        self.events = events
+
         self.paused = False
 
     def build(self):
@@ -81,7 +87,11 @@ class SimulationUI:
         app_data,
         user_data,
     ):
-        self.manager.load(app_data)
+
+        self.events.publish(
+            "simulation.load",
+            app_data,
+        )
 
         self.rebuild_parameter_ui()
 
@@ -91,7 +101,10 @@ class SimulationUI:
         app_data,
         user_data,
     ):
-        self.manager.reset()
+
+        self.events.publish(
+            "simulation.reset"
+        )
 
     def update_parameter(
         self,
@@ -129,9 +142,3 @@ class SimulationUI:
                 user_data=parameter,
                 parent="parameter_container",
             )
-
-    def render(self):
-        dpg.render_dearpygui_frame()
-
-    def shutdown(self):
-        dpg.destroy_context()

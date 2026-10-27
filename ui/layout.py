@@ -1,15 +1,7 @@
-# layout.py
 import dearpygui.dearpygui as dpg
 
 
 def create_dockspace():
-
-    dpg.create_context()
-
-    dpg.configure_app(
-        docking=True,
-        docking_space=True,
-    )
 
     with dpg.viewport_menu_bar():
 
@@ -44,12 +36,3 @@ def create_dockspace():
         dpg.add_text(
             "Console"
         )
-
-    dpg.create_viewport(
-        title="Simulation Sandbox",
-        width=1920,
-        height=1080,
-    )
-
-    dpg.setup_dearpygui()
-    dpg.show_viewport()
