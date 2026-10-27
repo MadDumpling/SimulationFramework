@@ -5,9 +5,13 @@ from registry import SIMULATIONS
 
 from ui import SimulationUI
 from input import InputManager
+from simulation_manager import (
+    SimulationManager
+)
 
 
 def main():
+
     try:
         ti.init(arch=ti.gpu)
     except RuntimeError as error:
@@ -17,7 +21,6 @@ def main():
         )
         ti.init(arch=ti.cpu)
 
-    # Discover all simulations
     load_simulations()
 
     print("Registered simulations:")
@@ -31,41 +34,32 @@ def main():
 
     canvas = window.get_canvas()
 
-    # Create initial simulation from registry
-    from simulation_manager import (
-        SimulationManager
-    )
-
     manager = SimulationManager()
 
     manager.load(
         "Bouncing Balls"
     )
 
-    ui = SimulationUI()
+    ui = SimulationUI(manager)
 
     input_manager = InputManager()
 
     while window.running:
 
-        mouse_over_gui = (
-            ui.is_mouse_over_gui(window)
-        )
+        # Render DearPyGui frame
+        ui.render()
 
+        # Camera input
         input_manager.update(
             window,
-            disable_mouse_camera=mouse_over_gui,
+            disable_mouse_camera=False,
         )
 
-        ui.draw(
-            window,
-            manager.current,
-            input_manager.camera,
-        )
-
+        # Update simulation
         if not ui.paused:
             manager.step()
 
+        # Render simulation
         canvas.set_background_color(
             (0.05, 0.05, 0.08)
         )
@@ -76,6 +70,8 @@ def main():
         )
 
         window.show()
+
+    ui.shutdown()
 
 
 if __name__ == "__main__":

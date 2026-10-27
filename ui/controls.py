@@ -1,54 +1,133 @@
-#controls.py
+import dearpygui.dearpygui as dpg
+
+from registry import SIMULATIONS
+
+
 class SimulationUI:
 
-    def __init__(self):
+    def __init__(self, simulation_manager):
+
+        self.manager = simulation_manager
         self.paused = False
-        self.controls_x = 0.02
-        self.controls_y = 0.02
-        self.controls_width = 0.25
-        self.controls_height = 0.30
 
-    def is_mouse_over_gui(self, window):
-        mouse_x, mouse_y = window.get_cursor_pos()
+        dpg.create_context()
 
-        if mouse_x > 1.0 or mouse_y > 1.0:
-            window_width, window_height = window.get_window_shape()
-            if window_width > 0 and window_height > 0:
-                mouse_x /= window_width
-                mouse_y /= window_height
-
-        return (
-            self.controls_x <= mouse_x <= self.controls_x + self.controls_width
-            and self.controls_y <= mouse_y <= self.controls_y + self.controls_height
-        )
-
-    def draw(self, window, simulation, camera):
-
-        gui = window.get_gui()
-
-        with gui.sub_window(
-            "Controls",
-            self.controls_x,
-            self.controls_y,
-            self.controls_width,
-            self.controls_height,
+        with dpg.window(
+            label="Controls",
+            width=400,
+            height=700,
         ):
 
-            gui.text("Simulation Framework")
-
-            if gui.button("Reset"):
-                simulation.reset()
-            if gui.button("Reset Camera"):
-                camera.reset()
-            self.paused = gui.checkbox(
-                "Paused",
-                self.paused,
+            dpg.add_text(
+                "Simulation Framework"
             )
-            for parameter in simulation.parameters.values():
 
-                parameter.value = gui.slider_float(
-                    parameter.name,
-                    parameter.value,
-                    parameter.min,
-                    parameter.max,
-                )
+            dpg.add_separator()
+
+            dpg.add_text(
+                "Simulation"
+            )
+
+            dpg.add_combo(
+                items=list(
+                    SIMULATIONS.keys()
+                ),
+                default_value="Bouncing Balls",
+                callback=self.change_simulation,
+            )
+
+            dpg.add_separator()
+
+            dpg.add_button(
+                label="Reset Simulation",
+                callback=self.reset_simulation,
+            )
+
+            dpg.add_checkbox(
+                label="Paused",
+                default_value=False,
+                callback=self.toggle_pause,
+            )
+
+            dpg.add_separator()
+
+            dpg.add_text("Parameters")
+
+            dpg.add_group(
+                tag="parameter_container"
+            )
+
+        dpg.create_viewport(
+            title="Controls",
+            width=400,
+            height=700,
+        )
+
+        dpg.setup_dearpygui()
+        dpg.show_viewport()
+
+        self.rebuild_parameter_ui()
+
+    def toggle_pause(
+        self,
+        sender,
+        app_data,
+        user_data,
+    ):
+        self.paused = app_data
+
+    def change_simulation(
+        self,
+        sender,
+        app_data,
+        user_data,
+    ):
+        self.manager.load(app_data)
+
+        self.rebuild_parameter_ui()
+
+    def reset_simulation(
+        self,
+        sender,
+        app_data,
+        user_data,
+    ):
+        self.manager.reset()
+
+    def update_parameter(
+        self,
+        sender,
+        app_data,
+        parameter,
+    ):
+        parameter.value = app_data
+
+    def rebuild_parameter_ui(self):
+
+        dpg.delete_item(
+            "parameter_container",
+            children_only=True,
+        )
+
+        simulation = self.manager.current
+
+        if simulation is None:
+            return
+
+        for parameter in simulation.parameters.values():
+
+            dpg.add_slider_float(
+                label=parameter.name,
+                default_value=parameter.value,
+                min_value=parameter.min,
+                max_value=parameter.max,
+                callback=self.update_parameter,
+                user_data=parameter,
+                parent="parameter_container",
+            )
+
+    def render(self):
+        dpg.render_dearpygui_frame()
+
+    def shutdown(self):
+        dpg.destroy_context()
