@@ -1044,48 +1044,566 @@ SimulationHackathonFramework/
 │   ├── __init__.py
 │
 ```
-## Next Milestones
+
+# Version 0.3 - Application Architecture & Editor Foundation
+
+This milestone transforms the framework from a collection of interconnected systems into a structured application architecture with clear ownership boundaries, rendering abstraction, and event-driven communication.
+
+---
+
+# Major Architectural Refactor
+
+## Previous Architecture (v0.2)
+
+```text
+app.py
+│
+├── Taichi Initialization
+├── Plugin Loading
+├── SimulationManager
+├── InputManager
+├── SimulationUI
+├── Window Creation
+├── Main Loop
+└── DearPyGui Lifecycle
+```
+
+`app.py` acted as the application's God Object and contained responsibilities from every subsystem.
+
+---
+
+## New Architecture (v0.3)
+
+```text
+app.py
+│
+├── Application
+│     └── DearPyGui Lifecycle
+│
+└── SimulationApplication
+      │
+      ├── EventBus
+      ├── SimulationManager
+      ├── SimulationUI
+      ├── InputManager
+      └── TaichiRenderer
+```
+
+### Benefits
+
+- Clear ownership boundaries
+- Better separation of concerns
+- Easier testing
+- Reduced coupling
+- Foundation for editor-style workflow
+- Enables future plugin ecosystem
+
+---
+
+# Application Lifecycle System
+
+Added:
+
+```text
+ui/
+└── application.py
+```
+
+```python
+class Application:
+```
+
+### Responsibilities
+
+- DearPyGui Context Creation
+- Viewport Creation
+- Frame Rendering
+- Application Shutdown
+
+### Example
+
+```python
+app = Application()
+
+app.initialize()
+
+while app.running():
+
+    app.render()
+
+app.shutdown()
+```
+
+### Benefits
+
+- UI lifecycle isolated
+- No DPG management in feature code
+- Easier future editor integration
+
+---
+
+# Simulation Application Layer
+
+Added:
+
+```text
+ui/
+└── simulation_application.py
+```
+
+```python
+class SimulationApplication:
+```
+
+### Responsibilities
+
+- Simulation Orchestration
+- Input Handling
+- Simulation Updates
+- Renderer Coordination
+- UI Coordination
+
+### Example
+
+```python
+simulation_app = (
+    SimulationApplication()
+)
+
+simulation_app.initialize()
+
+simulation_app.update()
+
+simulation_app.render()
+```
+
+### Benefits
+
+- Application behavior centralized
+- Cleaner startup process
+- Easier future extension
+
+---
+
+# Renderer Abstraction
+
+Added:
+
+```text
+rendering/
+├── __init__.py
+└── taichi_renderer.py
+```
+
+```python
+class TaichiRenderer:
+```
+
+### Responsibilities
+
+- Window Creation
+- Canvas Management
+- Frame Lifecycle
+- Simulation Rendering
+- Presentation
+
+### Example
+
+```python
+renderer.begin_frame()
+
+renderer.render(
+    simulation,
+    camera,
+)
+
+renderer.end_frame()
+```
+
+### Benefits
+
+- Rendering backend isolated
+- Future OpenGL/Vulkan support possible
+- Future embedded viewport support
+- Reduced coupling to Taichi
+
+---
+
+# Event System
+
+Added:
+
+```text
+core/
+├── __init__.py
+└── event_bus.py
+```
+
+```python
+class EventBus:
+```
+
+### Supports
+
+```python
+publish()
+subscribe()
+```
+
+### Example
+
+```python
+events.publish(
+    "simulation.load",
+    "Boids",
+)
+```
+
+```python
+events.subscribe(
+    "simulation.load",
+    manager.load,
+)
+```
+
+### Benefits
+
+- Event-driven architecture
+- Reduced component coupling
+- Foundation for plugins
+- Foundation for scripting
+- Foundation for console commands
+- Foundation for networking
+
+---
+
+# UI Refactor
+
+SimulationUI now communicates through events.
+
+### Previous
+
+```python
+self.manager.load(
+    simulation_name
+)
+```
+
+### Current
+
+```python
+self.events.publish(
+    "simulation.load",
+    simulation_name,
+)
+```
+
+### Previous
+
+```python
+self.manager.reset()
+```
+
+### Current
+
+```python
+self.events.publish(
+    "simulation.reset"
+)
+```
+
+### Benefits
+
+- UI no longer directly controls systems
+- Cleaner architecture
+- Extensible communication pipeline
+
+---
+
+# Main Loop Refactor
+
+### Previous
+
+```python
+input_manager.update(...)
+
+manager.step()
+
+manager.render(...)
+
+ui.render()
+```
+
+### Current
+
+```python
+simulation_app.update()
+
+simulation_app.render()
+
+app.render()
+```
+
+### Benefits
+
+- Higher-level orchestration
+- Cleaner startup file
+- Clear subsystem ownership
+
+---
+
+# App.py Simplification
+
+The application entry point has been reduced to orchestration only.
+
+### Current Responsibilities
+
+- Taichi Initialization
+- Plugin Discovery
+- Application Startup
+- Main Loop
+- Shutdown
+
+### No Longer Responsible For
+
+- Window Management
+- Rendering
+- Simulation Coordination
+- Input Handling
+- UI Lifecycle
+
+---
+
+# Current Folder Structure
+
+```text
+SimulationHackathonFramework/
+│
+├── app.py
+│
+├── core/
+│   ├── __init__.py
+│   └── event_bus.py
+│
+├── rendering/
+│   ├── __init__.py
+│   └── taichi_renderer.py
+│
+├── ui/
+│   ├── __init__.py
+│   ├── application.py
+│   ├── controls.py
+│   ├── layout.py
+│   └── simulation_application.py
+│
+├── simulations/
+│   ├── __init__.py
+│   ├── base.py
+│   └── bouncing_balls.py
+│
+├── simulation_manager.py
+├── plugin_loader.py
+├── registry.py
+├── parameters.py
+└── app.py
+```
+
+---
+
+# Design Goals Achieved
+
+## Separation of Concerns
+
+```text
+Application
+↓
+UI Lifecycle
+```
+
+```text
+SimulationApplication
+↓
+Simulation Coordination
+```
+
+```text
+TaichiRenderer
+↓
+Rendering
+```
+
+```text
+SimulationManager
+↓
+Simulation State
+```
+
+---
+
+## Reduced Coupling
+
+### Previous
+
+```text
+SimulationUI
+    ↓
+SimulationManager
+```
+
+### Current
+
+```text
+SimulationUI
+      ↓
+   EventBus
+      ↓
+SimulationManager
+```
+
+---
+
+## Editor Foundation
+
+The framework is now structured more like a simulation editor than a standalone demo application.
+
+Future systems can connect through events:
+
+```text
+Console
+Keyboard Shortcuts
+Plugins
+Replay System
+Timeline
+Python Scripts
+Networking
+Node Editor
+```
+
+---
+
+# Current Status
+
+## Implemented
+
+✅ Application Lifecycle Layer
+
+✅ Simulation Application Layer
+
+✅ Renderer Abstraction
+
+✅ Event Bus System
+
+✅ Reduced Coupling
+
+✅ Cleaner Main Loop
+
+✅ Editor-Oriented Architecture
+
+✅ Dynamic Plugin Loading
+
+✅ Parameter System
+
+✅ Auto-Generated UI Controls
+
+✅ Runtime Simulation Switching
+
+✅ Bouncing Balls Reference Simulation
+
+---
+
+# Testing Status
+
+Framework architecture remains compatible with:
+
+```text
+✓ Simulation Registration
+✓ Plugin Discovery
+✓ Simulation Creation
+✓ Parameters
+✓ Metadata
+✓ UI Controls
+✓ Simulation Manager
+```
+
+Target:
+
+```text
+10/10 Tests Passing
+```
+
+---
+
+# Roadmap
+
+## v0.3.x
 
 ### Framework
 
-- [ ] FPS display
-- [ ] Keyboard shortcuts
-- [ ] Simulation registry
-- [ ] Simulation dropdown
-- [ ] Screenshot export
-- [ ] Video recording
+- FPS Display
+- Logging System
+- Console Window
+- Event Constants
+- Keyboard Shortcuts
+- Preset Serialization
+- Save/Load Parameters
 
 ### Simulations
 
-- [ ] Boids
-- [ ] Particle Life
-- [ ] Reaction Diffusion
-- [ ] Fluid Solver
-- [ ] Cloth Simulation
+- Boids
+- Particle Life
+- Reaction Diffusion
 
-### ROADMAP
+---
 
-v0.2
- - Simulation Registry
- - Plugin System (pluggy)
- - Save/Load Presets
- - FPS Counter
- - Screenshots
-v0.3
- - Replay System
- - Serialization
- - Timeline Scrubber
- - Recording
-v0.4
- - Embedded Python Runtime
- - Hot Reloading (watchdog)
- - API Introspection
-v0.5
- - Script Templates
- - Integrated Documentation
-v1.0
- - Node Editor
- - Drag-and-Drop Simulation Graph
+## v0.4
+
+### Tooling
+
+- Replay System
+- Timeline Scrubber
+- Recording
+- Screenshots
+- Session Serialization
+
+---
+
+## v0.5
+
+### Extensibility
+
+- Embedded Python Runtime
+- Hot Reloading (watchdog)
+- API Introspection
+- Script Templates
+
+---
+
+## v1.0
+
+### Editor Features
+
+- Integrated Documentation
+- Node Editor
+- Drag-and-Drop Simulation Graph
+- Embedded Simulation Viewport
+- Complete Plugin Ecosystem
+
+---
+
+# Summary
+
+Version **0.3** introduces the framework's first true application architecture.
+
+The project has evolved from a simulation demo into a modular simulation framework with a clear separation between:
+
+- Application Lifecycle
+- Rendering
+- Simulation Management
+- User Interface
+- Event Communication
+
+The framework is now positioned for advanced editor-style tooling, scripting, replay systems, hot reloading, and a full plugin ecosystem.
+
 
 ### Quality
 
