@@ -3,6 +3,10 @@ from core.serialization import (
     save_preset,
     load_preset,
 )
+from registry import (
+    create_simulation,
+    get_simulation_names,
+)
 class SimulationManager:
     """
     Manages the currently active simulation.
@@ -20,8 +24,13 @@ class SimulationManager:
     """
 
     def __init__(self):
-        self.current = None
+
         self.instances = {}
+        for name in get_simulation_names():
+            self.instances[name] = (
+                create_simulation(name)
+                )
+        self.current = None
     def load(self, simulation_name):
         """
         Load a simulation by name.
@@ -29,16 +38,6 @@ class SimulationManager:
         Example:
             manager.load("Bouncing Balls")
         """
-
-        if (
-            simulation_name
-            not in self.instances
-        ):
-            self.instances[
-                simulation_name
-            ] = create_simulation(
-                simulation_name
-            )
 
         self.current = self.instances[
             simulation_name
