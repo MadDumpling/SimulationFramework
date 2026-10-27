@@ -26,7 +26,12 @@ def main():
 
     while window.running:
 
-        input_manager.update(window)
+        mouse_over_gui = ui.is_mouse_over_gui(window)
+
+        input_manager.update(
+            window,
+            disable_mouse_camera=mouse_over_gui,
+        )
 
         ui.draw(window, simulation, input_manager.camera)
 

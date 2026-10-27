@@ -9,12 +9,19 @@ class Camera:
 
         self.dragging = False
         self.last_mouse = None
-        def reset(self):
-            self.offset[:] = 0.0
-            self.zoom = 1.0
+
+    def reset(self):
+        self.offset[:] = 0.0
+        self.zoom = 1.0
+        self.dragging = False
+        self.last_mouse = None
+
+    def update(self, window, allow_mouse_drag=True):
+        if not allow_mouse_drag:
             self.dragging = False
             self.last_mouse = None
-    def update(self, window):
+            return
+
         mouse = np.array(window.get_cursor_pos(), dtype=np.float32)
 
         # Left mouse drag
@@ -53,9 +60,15 @@ class InputManager:
     def __init__(self):
         self.camera = Camera()
 
-    def update(self, window):
+    def update(self, window, disable_mouse_camera=False):
 
-        self.camera.update(window)
+        self.camera.update(
+            window,
+            allow_mouse_drag=not disable_mouse_camera,
+        )
+
+        if window.is_pressed("r"):
+            self.camera.reset()
 
         # Zoom
         if window.is_pressed("e"):
