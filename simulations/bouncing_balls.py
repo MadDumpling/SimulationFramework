@@ -1,9 +1,9 @@
-# bouncing_balls.py
 import taichi as ti
 
 from registry import register_simulation
 from simulations.base import Simulation
 from parameters import Parameter
+
 
 N = 500
 
@@ -14,9 +14,10 @@ class BouncingBalls(Simulation):
 
     name = "Bouncing Balls"
     author = "You"
-    version = "0.1"
+    version = "0.3"
 
     def __init__(self):
+
         super().__init__()
 
         self.parameters = {
@@ -62,6 +63,7 @@ class BouncingBalls(Simulation):
 
     @ti.kernel
     def initialize(self):
+
         for i in range(N):
 
             self.positions[i] = [
@@ -84,23 +86,120 @@ class BouncingBalls(Simulation):
         damping: ti.f32,
         radius: ti.f32,
     ):
+
         for i in self.positions:
 
-            self.velocities[i].y -= gravity * 0.005
+            self.velocities[i].y -= (
+                gravity * 0.005
+            )
 
             self.positions[i] += (
                 self.velocities[i] * 0.005
             )
 
+            # Floor
             if self.positions[i].y < radius:
                 self.positions[i].y = radius
                 self.velocities[i].y *= -damping
 
+            # Ceiling
+            if self.positions[i].y > 1.0 - radius:
+                self.positions[i].y = (
+                    1.0 - radius
+                )
+                self.velocities[i].y *= -damping
+
+            # Left Wall
+            if self.positions[i].x < radius:
+                self.positions[i].x = radius
+                self.velocities[i].x *= -damping
+
+            # Right Wall
+            if self.positions[i].x > 1.0 - radius:
+                self.positions[i].x = (
+                    1.0 - radius
+                )
+                self.velocities[i].x *= -damping
+
+        # Ball-to-ball collisions
+        for i in self.positions:
+
+            for j in range(N):
+
+                if i == j:
+                    continue
+
+                pos_diff = (
+                    self.positions[i]
+                    - self.positions[j]
+                )
+
+                dist = pos_diff.norm()
+
+                min_dist = (
+                    2.0 * radius
+                )
+
+                if dist < min_dist:
+
+                    if dist == 0.0:
+                        continue
+
+                    normal = pos_diff / dist
+
+                    overlap = (
+                        min_dist - dist
+                    )
+
+                    self.positions[i] += (
+                        normal
+                        * overlap
+                        * 0.5
+                    )
+
+                    vel_diff = (
+                        self.velocities[i]
+                        - self.velocities[j]
+                    )
+
+                    vel_along_normal = (
+                        vel_diff.dot(normal)
+                    )
+
+                    if vel_along_normal < 0.0:
+
+                        impulse = (
+                            vel_along_normal
+                        )
+
+                        self.velocities[i] -= (
+                            normal
+                            * impulse
+                            * damping
+                        )
+
+                        self.velocities[j] += (
+                            normal
+                            * impulse
+                            * damping
+                        )
+
     def step(self):
 
-        gravity = self.parameters["gravity"].value
-        damping = self.parameters["damping"].value
-        radius = self.parameters["radius"].value
+        gravity = (
+            self.parameters["gravity"]
+            .value
+        )
+
+        damping = (
+            self.parameters["damping"]
+            .value
+        )
+
+        radius = (
+            self.parameters["radius"]
+            .value
+        )
 
         self._step(
             gravity,
@@ -115,20 +214,29 @@ class BouncingBalls(Simulation):
         offset_y: ti.f32,
         zoom: ti.f32,
     ):
+
         for i in self.positions:
 
             p = self.positions[i]
 
             p = (
-                p -
-                ti.Vector([offset_x, offset_y])
+                p
+                - ti.Vector(
+                    [offset_x, offset_y]
+                )
             ) * zoom
 
-            p += ti.Vector([0.5, 0.5])
+            p += ti.Vector(
+                [0.5, 0.5]
+            )
 
             self.render_positions[i] = p
 
-    def render(self, canvas, camera):
+    def render(
+        self,
+        canvas,
+        camera,
+    ):
 
         self.update_render_positions(
             camera.offset[0],
@@ -136,11 +244,14 @@ class BouncingBalls(Simulation):
             camera.zoom,
         )
 
+        radius = (
+            self.parameters["radius"]
+            .value
+            * camera.zoom
+        )
+
         canvas.circles(
             self.render_positions,
-            radius=(
-                self.parameters["radius"].value *
-                camera.zoom
-            ),
+            radius=radius,
             color=(0.2, 0.8, 1.0),
         )

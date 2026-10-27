@@ -27,3 +27,33 @@ class Simulation(ABC):
 
     def deserialize(self, state):
         pass
+    def serialize(self):
+
+        return {
+            name: parameter.value
+            for (
+                name,
+                parameter,
+            )
+            in self.parameters.items()
+        }
+
+
+    def deserialize(
+        self,
+        data,
+    ):
+
+        for (
+            name,
+            value,
+        ) in data.items():
+
+            if (
+                name
+                in self.parameters
+            ):
+
+                self.parameters[
+                    name
+                ].value = value
