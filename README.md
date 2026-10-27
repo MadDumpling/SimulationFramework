@@ -41,7 +41,6 @@ A reusable Python template for building interactive simulations with Taichi.
 This project currently supports:
 
 - Python 3.11
-- Python 3.12
 
 Python 3.14+ is not currently supported by Taichi.
 ### Clone the repository
