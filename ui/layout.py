@@ -29,8 +29,23 @@ def create_dockspace():
         tag="simulation_window",
     ):
 
-        dpg.add_text(
-            "Simulation Viewport",
+        with dpg.texture_registry():
+
+            dpg.add_dynamic_texture(
+                width=1280,
+                height=720,
+                default_value=[
+                    0.0
+                ] * (
+                    1280
+                    * 720
+                    * 4
+                ),
+                tag="viewport_texture",
+            )
+
+        dpg.add_image(
+            "viewport_texture"
         )
 
     with dpg.window(

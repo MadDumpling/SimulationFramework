@@ -59,14 +59,14 @@ class SimulationManager:
         if self.current:
             self.current.step()
 
-    def render(self, canvas, camera):
+    def render(self, renderer, camera):
         """
         Render the current simulation.
         """
 
         if self.current:
             self.current.render(
-                canvas,
+                renderer,
                 camera,
             )
     def save_preset(

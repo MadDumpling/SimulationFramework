@@ -322,7 +322,7 @@ class Boids(Simulation):
 
     def render(
         self,
-        canvas,
+        renderer,
         camera,
     ):
 
@@ -332,7 +332,7 @@ class Boids(Simulation):
             camera.zoom,
         )
 
-        canvas.circles(
+        renderer.draw_circles(
             self.render_positions,
             radius=self.parameters[
                 "radius"

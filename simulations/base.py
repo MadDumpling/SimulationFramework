@@ -33,7 +33,7 @@ class Simulation(ABC):
     @abstractmethod
     def render(
         self,
-        canvas,
+        renderer,
         camera,
     ):
         pass

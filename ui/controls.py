@@ -17,6 +17,8 @@ class SimulationUI:
 
         self.paused = False
 
+        self.ui_built = False
+
     def save_preset(
         self,
         sender,
@@ -51,7 +53,11 @@ class SimulationUI:
 
         self.build_metrics()
 
+        self.ui_built = True
+
         self.rebuild_parameter_ui()
+
+        self.rebuild_metrics_ui()
 
     def build_controls(self):
 
@@ -182,12 +188,23 @@ class SimulationUI:
             dpg.add_group(
                 tag="simulation_metrics_container"
             )
+            
+            dpg.add_separator()
+
+            dpg.add_text(
+                "Metric Graphs"
+            )
+
+            dpg.add_group(
+                tag="simulation_graphs_container"
+            )
 
     def rebuild_metrics_ui(self):
 
-        if not dpg.does_item_exist(
-            "simulation_metrics_container"
-        ):
+        if not self.ui_built:
+            return
+
+        if not self.manager.current:
             return
 
         dpg.delete_item(
@@ -195,20 +212,55 @@ class SimulationUI:
             children_only=True,
         )
 
+        dpg.delete_item(
+            "simulation_graphs_container",
+            children_only=True,
+        )
+
         simulation = self.manager.current
 
-        if simulation is None:
-            return
-
-        for metric in (
-            simulation.metrics.values()
+        for metric_key, metric in (
+            simulation.metrics.items()
         ):
 
             dpg.add_text(
                 f"{metric.name}: {metric.value}",
-                tag=f"metric_{metric.name}",
+                tag=f"metric_value_{metric_key}",
                 parent="simulation_metrics_container",
             )
+
+            if metric.graph:
+
+                plot_tag = (
+                    f"metric_plot_{metric_key}"
+                )
+
+                series_tag = (
+                    f"metric_series_{metric_key}"
+                )
+
+                with dpg.plot(
+                    label=metric.name,
+                    height=200,
+                    width=-1,
+                    parent="simulation_graphs_container",
+                ):
+
+                    dpg.add_plot_axis(
+                        dpg.mvXAxis,
+                        label="Frame",
+                    )
+
+                    with dpg.plot_axis(
+                        dpg.mvYAxis,
+                        label=metric.name,
+                    ):
+
+                        dpg.add_line_series(
+                            [0],
+                            [0],
+                            tag=series_tag,
+                        )
 
     def toggle_pause(
         self,
@@ -235,13 +287,6 @@ class SimulationUI:
 
         self.rebuild_metrics_ui()
 
-        self.events.publish(
-            "simulation.load",
-            app_data,
-        )
-
-        self.rebuild_parameter_ui()
-
     def reset_simulation(
         self,
         sender,
@@ -263,6 +308,9 @@ class SimulationUI:
         parameter.value = app_data
 
     def rebuild_parameter_ui(self):
+
+        if not self.ui_built:
+            return
 
         if not dpg.does_item_exist(
             "parameter_container",

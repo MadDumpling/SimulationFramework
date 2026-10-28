@@ -234,7 +234,7 @@ class BouncingBalls(Simulation):
 
     def render(
         self,
-        canvas,
+        renderer,
         camera,
     ):
 
@@ -250,7 +250,7 @@ class BouncingBalls(Simulation):
             * camera.zoom
         )
 
-        canvas.circles(
+        renderer.draw_circles(
             self.render_positions,
             radius=radius,
             color=(0.2, 0.8, 1.0),

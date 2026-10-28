@@ -29,6 +29,10 @@ class SimulationApplication:
 
         self.events = EventBus()
 
+        #
+        # Framework Metrics
+        #
+
         self.metrics = MetricsManager()
 
         self.metrics.register(
@@ -47,7 +51,9 @@ class SimulationApplication:
             SimulationManager()
         )
 
+        #
         # Simulation Events
+        #
 
         self.events.subscribe(
             "simulation.load",
@@ -59,7 +65,9 @@ class SimulationApplication:
             self.manager.reset,
         )
 
+        #
         # Preset Events
+        #
 
         self.events.subscribe(
             "preset.save",
@@ -115,7 +123,7 @@ class SimulationApplication:
         )
 
         #
-        # Graph Data
+        # Framework Graphs
         #
 
         fps_values = (
@@ -130,57 +138,75 @@ class SimulationApplication:
             )
         )
 
-        if len(fps_values) > 1:
-
-            fps_x = list(
-                range(
-                    len(fps_values)
-                )
+        if (
+            len(fps_values) > 1
+            and dpg.does_item_exist(
+                "fps_series"
             )
+        ):
 
             dpg.set_value(
                 "fps_series",
                 [
-                    fps_x,
+                    list(
+                        range(
+                            len(
+                                fps_values
+                            )
+                        )
+                    ),
                     fps_values,
                 ],
             )
 
-        if len(frame_values) > 1:
-
-            frame_x = list(
-                range(
-                    len(frame_values)
-                )
+        if (
+            len(frame_values) > 1
+            and dpg.does_item_exist(
+                "frame_time_series"
             )
+        ):
 
             dpg.set_value(
                 "frame_time_series",
                 [
-                    frame_x,
+                    list(
+                        range(
+                            len(
+                                frame_values
+                            )
+                        )
+                    ),
                     frame_values,
                 ],
             )
 
         #
-        # Metrics Text
+        # Framework Text
         #
 
-        dpg.set_value(
-            "fps_text",
-            (
-                f"FPS: "
-                f"{self.performance.fps:.1f}"
-            ),
-        )
+        if dpg.does_item_exist(
+            "fps_text"
+        ):
 
-        dpg.set_value(
-            "frame_time_text",
-            (
-                f"Frame Time: "
-                f"{self.performance.frame_time:.2f} ms"
-            ),
-        )
+            dpg.set_value(
+                "fps_text",
+                (
+                    f"FPS: "
+                    f"{self.performance.fps:.1f}"
+                ),
+            )
+
+        if dpg.does_item_exist(
+            "frame_time_text"
+        ):
+
+            dpg.set_value(
+                "frame_time_text",
+                (
+                    f"Frame Time: "
+                    f"{self.performance.frame_time:.2f} ms"
+                ),
+            )
 
         #
         # Input
@@ -198,36 +224,94 @@ class SimulationApplication:
         if not self.ui.paused:
 
             self.manager.step()
-            simulation = self.manager.current
 
-            if simulation:
+        simulation = (
+            self.manager.current
+        )
 
-                for metric in (
-                    simulation.metrics.values()
+        #
+        # Simulation Metrics
+        #
+
+        if simulation:
+
+            for (
+                key,
+                metric,
+            ) in (
+                simulation.metrics.items()
+            ):
+
+                #
+                # Metric Labels
+                #
+
+                value_tag = (
+                    f"metric_value_{key}"
+                )
+
+                if dpg.does_item_exist(
+                    value_tag
                 ):
 
-                    tag = (
-                        f"metric_{metric.name}"
+                    dpg.set_value(
+                        value_tag,
+                        (
+                            f"{metric.name}: "
+                            f"{metric.value:.2f}"
+                        ),
                     )
 
-                    if dpg.does_item_exist(
-                        tag
+                #
+                # Metric Graphs
+                #
+
+                if metric.graph:
+
+                    series_tag = (
+                        f"metric_series_{key}"
+                    )
+
+                    if (
+                        dpg.does_item_exist(
+                            series_tag
+                        )
+                        and
+                        len(
+                            metric.history
+                        ) > 1
                     ):
 
-                        dpg.set_value(
-                            tag,
-                            (
-                                f"{metric.name}: "
-                                f"{metric.value:.2f}"
-                            ),
+                        values = list(
+                            metric.history
                         )
+
+                        x_values = list(
+                            range(
+                                len(
+                                    values
+                                )
+                            )
+                        )
+
+                        dpg.set_value(
+                            series_tag,
+                            [
+                                x_values,
+                                values,
+                            ],
+                        )
+
     def render(self):
 
         self.renderer.begin_frame()
 
-        self.renderer.render(
-            self.manager.current,
-            self.input_manager.camera,
-        )
+        simulation = self.manager.current
+
+        if simulation:
+            simulation.render(
+                self.renderer,
+                self.input_manager.camera,
+            )
 
         self.renderer.end_frame()

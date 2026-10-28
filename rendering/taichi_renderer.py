@@ -1,7 +1,9 @@
 import taichi as ti
 
+from .renderer import Renderer
 
-class TaichiRenderer:
+
+class TaichiRenderer(Renderer):
 
     def __init__(self):
 
@@ -25,16 +27,17 @@ class TaichiRenderer:
             (0.05, 0.05, 0.08)
         )
 
-    def render(
+    def draw_circles(
         self,
-        simulation,
-        camera,
+        positions,
+        radius,
+        color,
     ):
-        if simulation:
-            simulation.render(
-                self.canvas,
-                camera,
-            )
+        self.canvas.circles(
+            positions,
+            radius=radius,
+            color=color,
+        )
 
     def end_frame(self):
         self.window.show()
