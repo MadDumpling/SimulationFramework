@@ -1,7 +1,18 @@
 import sys
+import unittest.mock
 from pathlib import Path
 
 import pytest
+
+# 🟢 CREATE A SAFE VIRTUAL ENGINE MOCK TO PREVENT HEADLESS CI SEGFUALTS
+m = unittest.mock.MagicMock()
+m.does_item_exist.return_value = True
+sys.modules['dearpygui'] = m
+sys.modules['dearpygui.dearpygui'] = m
+
+# =========================================================================
+# ORIGINAL ENVIRONMENT INITIALIZATION ACTIONS
+# =========================================================================
 import taichi as ti
 
 ROOT = Path(__file__).resolve().parents[1]
