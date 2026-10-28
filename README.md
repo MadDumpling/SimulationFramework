@@ -1,6 +1,6 @@
 # Taichi Simulation Template
 
-A reusable Python template for building interactive simulations with Taichi.
+A reusable Python template for building interactive simulations with Taichi. The goal is to decrease the time spent on infrastructure for building CAD or simulation software. 
 
 ## Features
 
