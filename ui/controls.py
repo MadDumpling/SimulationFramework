@@ -304,6 +304,11 @@ class SimulationUI:
         app_data,
         parameter,
     ):
+        print(
+        "PARAM:",
+        parameter.name,
+        app_data,
+        )
 
         parameter.value = app_data
 

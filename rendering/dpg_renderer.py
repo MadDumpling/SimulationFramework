@@ -30,10 +30,14 @@ class DpgRenderer(Renderer):
         return True
 
     def begin_frame(self):
-        self.frame[:, :, 0] = 0.05
-        self.frame[:, :, 1] = 0.05
-        self.frame[:, :, 2] = 0.08
-        self.frame[:, :, 3] = 1.0
+
+        self.clear(
+            (
+                0.05,
+                0.05,
+                0.08,
+            )
+        )
 
     def _to_points(self, positions):
         if hasattr(positions, "to_numpy"):
@@ -140,6 +144,15 @@ class DpgRenderer(Renderer):
                 self.frame[py, px, 1] = color[1]
                 self.frame[py, px, 2] = color[2]
                 self.frame[py, px, 3] = 1.0
+    def clear(
+        self,
+        color,
+    ):
+
+        self.frame[:, :, 0] = color[0]
+        self.frame[:, :, 1] = color[1]
+        self.frame[:, :, 2] = color[2]
+        self.frame[:, :, 3] = 1.0
 
     def end_frame(self):
         if not dpg.does_item_exist(

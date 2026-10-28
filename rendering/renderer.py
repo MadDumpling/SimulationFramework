@@ -42,7 +42,12 @@ class Renderer(ABC):
         color,
     ):
         pass
-
+    @abstractmethod
+    def clear(
+        self,
+        color,
+    ):
+        pass
     @abstractmethod
     def end_frame(self):
         pass

@@ -60,6 +60,7 @@ class TaichiRenderer(Renderer):
         positions,
         color,
     ):
+        print ("Drawing points with color:", color)
         self.canvas.circles(
             positions,
             radius=0.001,

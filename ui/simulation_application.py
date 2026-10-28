@@ -18,6 +18,7 @@ from simulation_manager import (
 
 from rendering import (
     DpgRenderer,
+    OpenGLRenderer,
 )
 
 from .controls import SimulationUI
@@ -43,10 +44,18 @@ class SimulationApplication:
         self.metrics.register(
             "frame_time"
         )
+        USE_OPENGL = True
+        if USE_OPENGL:
 
-        self.renderer = (
-            DpgRenderer()
-        )
+            self.renderer = (
+                OpenGLRenderer()
+            )
+
+        else:
+
+            self.renderer = (
+                DpgRenderer()
+            )
 
         self.manager = (
             SimulationManager()
