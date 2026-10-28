@@ -3,6 +3,7 @@ import taichi as ti
 from registry import register_simulation
 from simulations.base import Simulation
 from parameters import Parameter
+from metrics import Metric
 
 
 N = 300
@@ -58,7 +59,21 @@ class Boids(Simulation):
                 0.02,
             ),
         }
+        self.metrics = {
 
+            "boids": Metric(
+                "Boid Count",
+            ),
+
+            "avg_speed": Metric(
+                "Average Speed",
+                graph=True,
+            ),
+
+            "neighbor_radius": Metric(
+                "Neighbor Radius",
+            ),
+        }
         self.positions = ti.Vector.field(
             2,
             ti.f32,
@@ -98,7 +113,21 @@ class Boids(Simulation):
                 ti.cos(angle),
                 ti.sin(angle),
             ]
+    @ti.kernel
+    def calculate_average_speed(
+        self,
+    ) -> ti.f32:
 
+        total = 0.0
+
+        for i in range(N):
+
+            total += (
+                self.velocities[i]
+                .norm()
+            )
+
+        return total / N
     def reset(self):
         self.initialize()
 
@@ -245,6 +274,26 @@ class Boids(Simulation):
             self.parameters[
                 "max_speed"
             ].value,
+        )
+        self.metrics[
+            "boids"
+        ].update(N)
+
+        self.metrics[
+            "neighbor_radius"
+        ].update(
+            self.parameters[
+                "neighbor_radius"
+            ].value
+        )
+        avg_speed = (
+            self.calculate_average_speed()
+        )
+
+        self.metrics[
+            "avg_speed"
+        ].update(
+            avg_speed
         )
     @ti.kernel
     def update_render_positions(

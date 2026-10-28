@@ -198,7 +198,29 @@ class SimulationApplication:
         if not self.ui.paused:
 
             self.manager.step()
+            simulation = self.manager.current
 
+            if simulation:
+
+                for metric in (
+                    simulation.metrics.values()
+                ):
+
+                    tag = (
+                        f"metric_{metric.name}"
+                    )
+
+                    if dpg.does_item_exist(
+                        tag
+                    ):
+
+                        dpg.set_value(
+                            tag,
+                            (
+                                f"{metric.name}: "
+                                f"{metric.value:.2f}"
+                            ),
+                        )
     def render(self):
 
         self.renderer.begin_frame()

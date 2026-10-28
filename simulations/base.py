@@ -1,32 +1,43 @@
 # base.py
-from abc import ABC, abstractmethod
+
+from abc import (
+    ABC,
+    abstractmethod,
+)
+
 
 class Simulation(ABC):
 
     name = "Unknown"
+
     author = "Unknown"
+
     version = "0.1"
 
+    description = ""
+
     def __init__(self):
+
         self.parameters = {}
+
+        self.metrics = {}
 
     @abstractmethod
     def reset(self):
         pass
 
     @abstractmethod
-    def step(self, dt):
+    def step(self):
         pass
 
     @abstractmethod
-    def render(self, canvas, camera):
+    def render(
+        self,
+        canvas,
+        camera,
+    ):
         pass
 
-    def serialize(self):
-        return {}
-
-    def deserialize(self, state):
-        pass
     def serialize(self):
 
         return {
@@ -34,10 +45,8 @@ class Simulation(ABC):
             for (
                 name,
                 parameter,
-            )
-            in self.parameters.items()
+            ) in self.parameters.items()
         }
-
 
     def deserialize(
         self,

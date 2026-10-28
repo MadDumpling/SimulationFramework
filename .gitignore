@@ -225,3 +225,7 @@ __marimo__/
 [Oo]bj/
 *.suo
 *.user
+
+# Presets (generated)
+presets/*.json
+!presets/default.json

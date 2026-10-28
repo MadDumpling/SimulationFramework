@@ -173,6 +173,42 @@ class SimulationUI:
                         [0],
                         tag="frame_time_series",
                     )
+            dpg.add_separator()
+
+            dpg.add_text(
+                "Simulation Metrics"
+            )
+
+            dpg.add_group(
+                tag="simulation_metrics_container"
+            )
+
+    def rebuild_metrics_ui(self):
+
+        if not dpg.does_item_exist(
+            "simulation_metrics_container"
+        ):
+            return
+
+        dpg.delete_item(
+            "simulation_metrics_container",
+            children_only=True,
+        )
+
+        simulation = self.manager.current
+
+        if simulation is None:
+            return
+
+        for metric in (
+            simulation.metrics.values()
+        ):
+
+            dpg.add_text(
+                f"{metric.name}: {metric.value}",
+                tag=f"metric_{metric.name}",
+                parent="simulation_metrics_container",
+            )
 
     def toggle_pause(
         self,
@@ -182,13 +218,22 @@ class SimulationUI:
     ):
 
         self.paused = app_data
-
+    
     def change_simulation(
         self,
         sender,
         app_data,
         user_data,
     ):
+
+        self.events.publish(
+            "simulation.load",
+            app_data,
+        )
+
+        self.rebuild_parameter_ui()
+
+        self.rebuild_metrics_ui()
 
         self.events.publish(
             "simulation.load",
