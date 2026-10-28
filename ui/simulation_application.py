@@ -17,10 +17,11 @@ from simulation_manager import (
 )
 
 from rendering import (
-    TaichiRenderer,
+    DpgRenderer,
 )
 
 from .controls import SimulationUI
+from .dpg_input_source import DpgInputSource
 
 
 class SimulationApplication:
@@ -44,7 +45,7 @@ class SimulationApplication:
         )
 
         self.renderer = (
-            TaichiRenderer()
+            DpgRenderer()
         )
 
         self.manager = (
@@ -88,13 +89,17 @@ class SimulationApplication:
             InputManager()
         )
 
+        self.input_source = (
+            DpgInputSource()
+        )
+
         self.performance = (
             PerformanceMonitor()
         )
 
     @property
     def running(self):
-        return self.renderer.running
+        return True
 
     def initialize(self):
 
@@ -213,8 +218,11 @@ class SimulationApplication:
         #
 
         self.input_manager.update(
-            self.renderer.window,
-            disable_mouse_camera=False,
+            self.input_source,
+            disable_mouse_camera=(
+                not self.input_source
+                .is_cursor_over_viewport()
+            ),
         )
 
         #

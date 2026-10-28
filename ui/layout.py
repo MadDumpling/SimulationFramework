@@ -45,7 +45,8 @@ def create_dockspace():
             )
 
         dpg.add_image(
-            "viewport_texture"
+            "viewport_texture",
+            tag="viewport_image",
         )
 
     with dpg.window(

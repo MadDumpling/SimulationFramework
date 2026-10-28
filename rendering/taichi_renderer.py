@@ -18,6 +18,10 @@ class TaichiRenderer(Renderer):
         )
 
     @property
+    def name(self):
+        return "Taichi Canvas"
+
+    @property
     def running(self):
         return self.window.running
 
@@ -36,6 +40,29 @@ class TaichiRenderer(Renderer):
         self.canvas.circles(
             positions,
             radius=radius,
+            color=color,
+        )
+
+    def draw_lines(
+        self,
+        start,
+        end,
+        color,
+    ):
+        self.canvas.lines(
+            start,
+            end,
+            color=color,
+        )
+
+    def draw_points(
+        self,
+        positions,
+        color,
+    ):
+        self.canvas.circles(
+            positions,
+            radius=0.001,
             color=color,
         )
 

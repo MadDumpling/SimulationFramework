@@ -1,5 +1,4 @@
 import numpy as np
-import taichi as ti
 
 
 class Camera:
@@ -25,7 +24,7 @@ class Camera:
         mouse = np.array(window.get_cursor_pos(), dtype=np.float32)
 
         # Right mouse drag keeps left-click UI interaction separate from the camera.
-        if window.is_pressed(ti.ui.RMB):
+        if window.is_pressed("mouse_right"):
 
             if not self.dragging:
                 self.dragging = True

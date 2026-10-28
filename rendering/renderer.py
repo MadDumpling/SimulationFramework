@@ -5,6 +5,11 @@ class Renderer(ABC):
 
     @property
     @abstractmethod
+    def name(self):
+        pass
+
+    @property
+    @abstractmethod
     def running(self):
         pass
 
@@ -17,6 +22,23 @@ class Renderer(ABC):
         self,
         positions,
         radius,
+        color,
+    ):
+        pass
+
+    @abstractmethod
+    def draw_lines(
+        self,
+        start,
+        end,
+        color,
+    ):
+        pass
+
+    @abstractmethod
+    def draw_points(
+        self,
+        positions,
         color,
     ):
         pass
