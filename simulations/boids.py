@@ -332,11 +332,20 @@ class Boids(Simulation):
             camera.zoom,
         )
 
-        renderer.draw_circles(
-            self.render_positions,
-            radius=self.parameters[
+        radius = (
+            self.parameters[
                 "radius"
             ].value
-            * camera.zoom,
+            * camera.zoom
+        )
+
+        print(
+            "Boids radius:",
+            radius
+        )
+
+        renderer.draw_circles(
+            self.render_positions,
+            radius=radius,
             color=(1.0, 0.8, 0.2),
         )

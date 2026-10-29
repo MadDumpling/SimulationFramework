@@ -26,9 +26,16 @@ class TaichiRenderer(Renderer):
         return self.window.running
 
     def begin_frame(self):
-
-        self.canvas.set_background_color(
+        self.clear(
             (0.05, 0.05, 0.08)
+        )
+
+    def clear(
+        self,
+        color,
+    ):
+        self.canvas.set_background_color(
+            color
         )
 
     def draw_circles(
@@ -43,6 +50,21 @@ class TaichiRenderer(Renderer):
             color=color,
         )
 
+    def draw_points(
+        self,
+        positions,
+        color,
+    ):
+        #
+        # Debug fallback
+        #
+
+        self.draw_circles(
+            positions,
+            radius=0.001,
+            color=color,
+        )
+
     def draw_lines(
         self,
         start,
@@ -52,18 +74,6 @@ class TaichiRenderer(Renderer):
         self.canvas.lines(
             start,
             end,
-            color=color,
-        )
-
-    def draw_points(
-        self,
-        positions,
-        color,
-    ):
-        print ("Drawing points with color:", color)
-        self.canvas.circles(
-            positions,
-            radius=0.001,
             color=color,
         )
 

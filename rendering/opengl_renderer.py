@@ -1,11 +1,9 @@
-# Opengl_renderer.py
+import dearpygui.dearpygui as dpg
 import moderngl
 import numpy as np
 
 from .renderer import Renderer
-import moderngl
-import numpy as np
-import dearpygui.dearpygui as dpg
+
 
 VERTEX_SHADER = """
 #version 330
@@ -40,10 +38,7 @@ void main()
         gl_PointCoord
         - vec2(0.5);
 
-    if (
-        length(uv)
-        > 0.5
-    )
+    if (length(uv) > 0.5)
     {
         discard;
     }
@@ -58,55 +53,122 @@ void main()
 
 class OpenGLRenderer(Renderer):
 
+    DEFAULT_WIDTH = 1280
+    DEFAULT_HEIGHT = 720
+
+    BACKGROUND_COLOR = (
+        0.05,
+        0.05,
+        0.08,
+        1.0,
+    )
+
     def __init__(self):
 
-
-        self.width = 1280
-        self.height = 720
+        self.width = self.DEFAULT_WIDTH
+        self.height = self.DEFAULT_HEIGHT
 
         self.ctx = (
-            moderngl
-            .create_standalone_context()
+            moderngl.create_standalone_context()
         )
+
+        self.ctx.enable(
+            moderngl.PROGRAM_POINT_SIZE
+        )
+
         self.program = self.ctx.program(
             vertex_shader=VERTEX_SHADER,
             fragment_shader=FRAGMENT_SHADER,
         )
-        print(
-            self.program._members.keys()
-        )
-        self.program["point_size"].value = 30.0
-        self.program["color"].value = (
-            1.0,
-            1.0,
-            1.0,
-        )
-        self.texture = (
-            self.ctx.texture(
-                (self.width, self.height),
-                4,
-                dtype="f1",
-            )
-        )
 
-        self.fbo = (
-            self.ctx.framebuffer(
-                color_attachments=[
-                    self.texture
-                ]
-            )
-        )
+        self._create_render_target()
 
-        print(
-            "OpenGL initialized"
-        )
-        print("Renderer:", self.ctx.info.get("GL_RENDERER"))
-        print("Vendor:", self.ctx.info.get("GL_VENDOR"))
-        print("Version:", self.ctx.info.get("GL_VERSION"))
-        self.ctx.enable(
-            moderngl.PROGRAM_POINT_SIZE
-        )
         self.last_debug_radius = None
+
+        print("OpenGL initialized")
+
+        print(
+            "Renderer:",
+            self.ctx.info.get(
+                "GL_RENDERER"
+            ),
+        )
+
+        print(
+            "Vendor:",
+            self.ctx.info.get(
+                "GL_VENDOR"
+            ),
+        )
+
+        print(
+            "Version:",
+            self.ctx.info.get(
+                "GL_VERSION"
+            ),
+        )
+
+    def _create_render_target(self):
+
+        self.texture = self.ctx.texture(
+            (
+                self.width,
+                self.height,
+            ),
+            4,
+            dtype="f1",
+        )
+
+        self.fbo = self.ctx.framebuffer(
+            color_attachments=[
+                self.texture
+            ]
+        )
+
+    def resize(
+        self,
+        width,
+        height,
+    ):
+
+        width = max(
+            1,
+            int(width),
+        )
+
+        height = max(
+            1,
+            int(height),
+        )
+
+        if (
+            width == self.width
+            and height == self.height
+        ):
+            return
+
+        self.width = width
+        self.height = height
+
+        if hasattr(
+            self,
+            "texture",
+        ):
+            self.texture.release()
+
+        if hasattr(
+            self,
+            "fbo",
+        ):
+            self.fbo.release()
+
+        self._create_render_target()
+
+        print(
+            f"Renderer resized: "
+            f"{width}x{height}"
+        )
+
     @property
     def name(self):
         return "OpenGL"
@@ -116,13 +178,11 @@ class OpenGLRenderer(Renderer):
         return True
 
     def begin_frame(self):
-        
+
         self.fbo.use()
+
         self.ctx.clear(
-            0.05,
-            0.05,
-            0.08,
-            1.0,
+            *self.BACKGROUND_COLOR
         )
 
     def clear(
@@ -137,64 +197,58 @@ class OpenGLRenderer(Renderer):
             1.0,
         )
 
-    def draw_points(
+    def _to_numpy(
         self,
         positions,
-        color,
     ):
 
         if hasattr(
             positions,
             "to_numpy",
         ):
-            points = (
+            return (
                 positions.to_numpy()
             )
 
-        else:
-            points = np.asarray(
-                positions,
-                dtype="f4",
-            )
-
-        if len(points) == 0:
-            return
-
-        #
-        # [0,1] → OpenGL [-1,1]
-        #
-
-        gl_points = (
-            points * 2.0
-        ) - 1.0
-
-        gl_points = np.asarray(
-            gl_points,
+        return np.asarray(
+            positions,
             dtype="f4",
         )
 
-        self.vbo = (
-            self.ctx.buffer(
-                gl_points.tobytes()
-            )
+    def _to_gl_space(
+        self,
+        points,
+    ):
+
+        return np.asarray(
+            (
+                points * 2.0
+            ) - 1.0,
+            dtype="f4",
         )
 
-        self.vao = (
-            self.ctx.vertex_array(
-                self.program,
-                [
-                    (
-                        self.vbo,
-                        "2f",
-                        "in_position",
-                    )
-                ],
-            )
+    def _create_geometry(
+        self,
+        points,
+    ):
+
+        vbo = self.ctx.buffer(
+            points.tobytes()
         )
 
-        self.vao.render(
-            moderngl.POINTS
+        vao = self.ctx.vertex_array(
+            self.program,
+            [
+                (
+                    vbo,
+                    "2f",
+                    "in_position",
+                )
+            ],
         )
+
+        return vbo, vao
+
     def radius_to_pixels(
         self,
         radius,
@@ -209,6 +263,44 @@ class OpenGLRenderer(Renderer):
             )
             * 2.0,
         )
+
+    def draw_points(
+        self,
+        positions,
+        color,
+    ):
+
+        points = self._to_numpy(
+            positions
+        )
+
+        if len(points) == 0:
+            return
+
+        gl_points = (
+            self._to_gl_space(
+                points
+            )
+        )
+
+        self.program[
+            "point_size"
+        ].value = 4.0
+
+        self.program[
+            "color"
+        ].value = color
+
+        _, vao = (
+            self._create_geometry(
+                gl_points
+            )
+        )
+
+        vao.render(
+            moderngl.POINTS
+        )
+
     def draw_circles(
         self,
         positions,
@@ -216,71 +308,38 @@ class OpenGLRenderer(Renderer):
         color,
     ):
 
+        points = self._to_numpy(
+            positions
+        )
+
+        if len(points) == 0:
+            return
+
         point_size = (
             self.radius_to_pixels(
                 radius
             )
         )
 
-        #
-        # Only print when radius changes
-        #
-
         if (
-            self.last_debug_radius
-            != radius
+            radius
+            != self.last_debug_radius
         ):
 
-            self.last_debug_radius = radius
-
-            print(
-                "\n=== DRAW CIRCLES ==="
+            self.last_debug_radius = (
+                radius
             )
 
             print(
-                "Radius:",
-                radius,
+                f"Radius={radius}"
+                f" Size={point_size}"
             )
-
-            print(
-                "Point Size:",
-                point_size,
-            )
-
-            print(
-                "Color:",
-                color,
-            )
-
-        if hasattr(
-            positions,
-            "to_numpy",
-        ):
-
-            points = positions.to_numpy()
-
-        else:
-
-            points = np.asarray(
-                positions,
-                dtype="f4",
-            )
-
-        if len(points) == 0:
-            return
 
         gl_points = (
-            points * 2.0
-        ) - 1.0
-
-        gl_points = np.asarray(
-            gl_points,
-            dtype="f4",
+            self._to_gl_space(
+                points
+            )
         )
-
-        #
-        # Shader uniforms
-        #
 
         self.program[
             "point_size"
@@ -288,44 +347,15 @@ class OpenGLRenderer(Renderer):
 
         self.program[
             "color"
-        ].value = (
-            color[0],
-            color[1],
-            color[2],
-        )
+        ].value = color
 
-        #
-        # Debug verify uniform value
-        #
-
-        if (
-            self.last_debug_radius
-            == radius
-        ):
-
-            print(
-                "Shader point_size:",
-                self.program[
-                    "point_size"
-                ].value,
+        _, vao = (
+            self._create_geometry(
+                gl_points
             )
-
-        self.vbo = self.ctx.buffer(
-            gl_points.tobytes()
         )
 
-        self.vao = self.ctx.vertex_array(
-            self.program,
-            [
-                (
-                    self.vbo,
-                    "2f",
-                    "in_position",
-                )
-            ],
-        )
-
-        self.vao.render(
+        vao.render(
             moderngl.POINTS
         )
 
@@ -347,7 +377,10 @@ class OpenGLRenderer(Renderer):
             pixels,
             dtype=np.uint8,
         )
-
+        print(
+            "frame elements:",
+            len(frame)
+        )
         frame = frame.reshape(
             (
                 self.height,
@@ -375,3 +408,37 @@ class OpenGLRenderer(Renderer):
                 "viewport_texture",
                 frame.reshape(-1),
             )
+    print(
+        "texture exists:",
+        dpg.does_item_exist(
+            "viewport_texture"
+        )
+    )
+
+    print(
+        "image exists:",
+        dpg.does_item_exist(
+            "viewport_image"
+        )
+    )
+
+    try:
+
+        dpg.set_value(
+            "viewport_texture",
+            frame.reshape(-1),
+        )
+
+        print(
+            "upload success",
+            len(
+                frame.reshape(-1)
+            )
+        )
+
+    except Exception as e:
+
+        print(
+            "UPLOAD ERROR:",
+            e,
+        )

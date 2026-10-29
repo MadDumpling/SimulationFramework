@@ -3,6 +3,9 @@ import dearpygui.dearpygui as dpg
 
 class Application:
 
+    WINDOW_WIDTH = 1920
+    WINDOW_HEIGHT = 1080
+
     def initialize(self):
 
         dpg.create_context()
@@ -14,12 +17,16 @@ class Application:
 
         dpg.create_viewport(
             title="Simulation Sandbox",
-            width=1920,
-            height=1080,
+            width=self.WINDOW_WIDTH,
+            height=self.WINDOW_HEIGHT,
+            resizable=True,
         )
 
         dpg.setup_dearpygui()
+
         dpg.show_viewport()
+
+        dpg.maximize_viewport()
 
     def running(self):
         return dpg.is_dearpygui_running()
