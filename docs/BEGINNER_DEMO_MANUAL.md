@@ -155,6 +155,4 @@ Then load a failure scenario and show how a single design constraint can prevent
 
 ---
 
-## One-Sentence Project Description
-
-Spacecraft Configurator is an interactive spacecraft mission-design platform that enables users to assemble vehicles, evaluate engineering tradeoffs, visualize spacecraft architecture, and analyze Earth-to-Moon mission feasibility using real astronomical data and historical mission references.
+Celeste SpaceWorks is an interactive spacecraft mission-design platform that enables users to assemble vehicles, evaluate engineering tradeoffs, visualize spacecraft architecture, and analyze Earth-to-Moon mission feasibility using real astronomical data and historical mission references.
