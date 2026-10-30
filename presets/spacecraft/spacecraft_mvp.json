@@ -1,43 +1,199 @@
 {
-  "schema_version": 1,
-  "name": "Chemical Explorer Concept",
+  "schema_version": 2,
+  "name": "Apollo Lunar Module (descent)",
+  "revision": "LM descent, design weights Dec 1967 (S4); engine as of Apollo 11 era",
+  "provenance": {
+    "quality": "estimated",
+    "source": "Ali et al., AAS-26-167 Table 2 (gear geometry from NASA CAD model); Rogers, 7th Aerospace Mechanisms Symposium 1972",
+    "revision": "NTRS 20260001760",
+    "uncertainty_pct": null,
+    "units": "SI (kg, N, s, Pa, m, deg)",
+    "notes": "Gear geometry measured from a public CAD model and spot-checked by the authors. Vehicle origin y=0 is the footpad-bottom plane. Allowable touchdown tilt and angular rate were not found and remain blocking."
+  },
+  "landing_gear": {
+    "leg_count": 4,
+    "footprint_radius_m": 4.242,
+    "foot_plane_y_m": 0.0,
+    "engine_clearance_m": null,
+    "rated_vertical_speed_mps": null,
+    "rated_horizontal_speed_mps": null
+  },
+  "attitude_limits": null,
   "components": [
     {
       "type": "Engine",
-      "name": "Demo kerolox engine",
-      "dry_mass": 500.0,
-      "id": "demo-engine-01",
-      "description": "Illustrative sea-level chemical engine parameters.",
-      "thrust": 845000.0,
-      "isp": 300.0,
-      "fuel_type": "LOX/RP-1",
-      "power_draw_kw": 0.0
+      "name": "LM descent engine (LMDE/DPS)",
+      "dry_mass": 179.0,
+      "id": "lm-dps-engine",
+      "description": "Throttleable hypergolic descent engine, 10:1 throttle ratio.",
+      "stage": 1,
+      "provenance": {
+        "quality": "estimated",
+        "source": "NASA TN D-7143 (rated thrust, throttle, gimbal, restarts); Wikipedia Descent propulsion system (Isp, chamber pressure, mass, geometry)",
+        "revision": "TN D-7143 Mar 1973; Wikipedia accessed 2026-10-30",
+        "uncertainty_pct": null,
+        "units": "SI (kg, N, s, Pa, m, deg)",
+        "notes": "Mixed published and published-secondary values; Isp and chamber pressure at 10% and 100% only, interpolated linearly in between. Throttle 1.0 is the 10,500 lbf maximum rating; in flight the engine ran throttled to 65% or at the 92.5% fixed throttle point, with 65%-92.5% non-operating. Model chamber pressure at 10% throttle is ~83 kPa vs 76 kPa published. Duty-cycle life 1,000 s (not per-burn). Sea-level performance is unknown and likely N/A for this vacuum engine; exit area is derived from the 59 in exit diameter. Tail-off, minimum impulse and gimbal rate unknown."
+      },
+      "com_m": null,
+      "inertia_kgm2": null,
+      "dimensions_m": [
+        2.159,
+        1.499
+      ],
+      "thrust": 46706.31,
+      "isp": 311.0,
+      "fuel_type": "N2O4/Aerozine-50",
+      "power_draw_kw": 0.0,
+      "sea_level_thrust": null,
+      "chamber_pressure_pa": 760000.0,
+      "exit_area_m2": 1.764,
+      "throttle": {
+        "min_fraction": 0.1,
+        "max_fraction": 1.0,
+        "curve": [
+          [
+            0.1,
+            0.1091,
+            0.9164
+          ],
+          [
+            1.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "excluded_ranges": [
+          [
+            0.65,
+            0.925
+          ]
+        ]
+      },
+      "ignition": {
+        "max_ignitions": 3,
+        "min_burn_time_s": null,
+        "max_burn_time_s": null,
+        "min_impulse_ns": null,
+        "tail_off_time_s": null,
+        "tail_off_impulse_ns": null
+      },
+      "gimbal": {
+        "half_angle_deg": 6.0,
+        "rate_dps": null
+      }
     },
     {
       "type": "FuelTank",
-      "name": "Demo LOX/RP-1 tank",
-      "dry_mass": 2500.0,
-      "id": "demo-tank-01",
-      "description": "Illustrative tank; fuel mass is user-configurable.",
-      "capacity": 40000.0,
-      "fuel_mass": 30000.0,
-      "fuel_type": "LOX/RP-1"
+      "name": "Descent oxidizer tank 1",
+      "dry_mass": 0.0,
+      "id": "lm-descent-oxidizer-tank-1",
+      "description": "",
+      "stage": 1,
+      "provenance": {
+        "quality": "estimated",
+        "source": "NASA MSC IN 68-FM-78 Table II (propellant mass); Grumman LMA790-2 3-4.1 (mixture ratio 1.6)",
+        "revision": "S4 29 Mar 1968",
+        "uncertainty_pct": null,
+        "units": "SI (kg, N, s, Pa, m, deg)",
+        "notes": "Loaded masses derived from total descent propellant and mixture ratio, split equally between the two tanks of each type. Tank capacity unknown: set equal to loaded mass (a lower bound). Residual/unusable propellant unknown. Tank dry mass is included in the remainder component."
+      },
+      "com_m": null,
+      "inertia_kgm2": null,
+      "dimensions_m": null,
+      "capacity": 2244.6,
+      "fuel_mass": 2244.6,
+      "fuel_type": "N2O4/Aerozine-50",
+      "residual_propellant": null
+    },
+    {
+      "type": "FuelTank",
+      "name": "Descent oxidizer tank 2",
+      "dry_mass": 0.0,
+      "id": "lm-descent-oxidizer-tank-2",
+      "description": "",
+      "stage": 1,
+      "provenance": {
+        "quality": "estimated",
+        "source": "NASA MSC IN 68-FM-78 Table II (propellant mass); Grumman LMA790-2 3-4.1 (mixture ratio 1.6)",
+        "revision": "S4 29 Mar 1968",
+        "uncertainty_pct": null,
+        "units": "SI (kg, N, s, Pa, m, deg)",
+        "notes": "Loaded masses derived from total descent propellant and mixture ratio, split equally between the two tanks of each type. Tank capacity unknown: set equal to loaded mass (a lower bound). Residual/unusable propellant unknown. Tank dry mass is included in the remainder component."
+      },
+      "com_m": null,
+      "inertia_kgm2": null,
+      "dimensions_m": null,
+      "capacity": 2244.6,
+      "fuel_mass": 2244.6,
+      "fuel_type": "N2O4/Aerozine-50",
+      "residual_propellant": null
+    },
+    {
+      "type": "FuelTank",
+      "name": "Descent fuel tank 1",
+      "dry_mass": 0.0,
+      "id": "lm-descent-fuel-tank-1",
+      "description": "",
+      "stage": 1,
+      "provenance": {
+        "quality": "estimated",
+        "source": "NASA MSC IN 68-FM-78 Table II (propellant mass); Grumman LMA790-2 3-4.1 (mixture ratio 1.6)",
+        "revision": "S4 29 Mar 1968",
+        "uncertainty_pct": null,
+        "units": "SI (kg, N, s, Pa, m, deg)",
+        "notes": "Loaded masses derived from total descent propellant and mixture ratio, split equally between the two tanks of each type. Tank capacity unknown: set equal to loaded mass (a lower bound). Residual/unusable propellant unknown. Tank dry mass is included in the remainder component."
+      },
+      "com_m": null,
+      "inertia_kgm2": null,
+      "dimensions_m": null,
+      "capacity": 1402.9,
+      "fuel_mass": 1402.9,
+      "fuel_type": "N2O4/Aerozine-50",
+      "residual_propellant": null
+    },
+    {
+      "type": "FuelTank",
+      "name": "Descent fuel tank 2",
+      "dry_mass": 0.0,
+      "id": "lm-descent-fuel-tank-2",
+      "description": "",
+      "stage": 1,
+      "provenance": {
+        "quality": "estimated",
+        "source": "NASA MSC IN 68-FM-78 Table II (propellant mass); Grumman LMA790-2 3-4.1 (mixture ratio 1.6)",
+        "revision": "S4 29 Mar 1968",
+        "uncertainty_pct": null,
+        "units": "SI (kg, N, s, Pa, m, deg)",
+        "notes": "Loaded masses derived from total descent propellant and mixture ratio, split equally between the two tanks of each type. Tank capacity unknown: set equal to loaded mass (a lower bound). Residual/unusable propellant unknown. Tank dry mass is included in the remainder component."
+      },
+      "com_m": null,
+      "inertia_kgm2": null,
+      "dimensions_m": null,
+      "capacity": 1402.9,
+      "fuel_mass": 1402.9,
+      "fuel_type": "N2O4/Aerozine-50",
+      "residual_propellant": null
     },
     {
       "type": "Payload",
-      "name": "Demo payload",
-      "dry_mass": 1000.0,
-      "id": "demo-payload-01",
-      "description": "Illustrative payload mass."
-    },
-    {
-      "type": "PowerSystem",
-      "name": "Demo solar array",
-      "dry_mass": 80.0,
-      "id": "demo-power-01",
-      "description": "Illustrative power-system parameters.",
-      "generation_kw": 1.2,
-      "storage_kwh": 5.0
+      "name": "LM structure, ascent stage, RCS, gear (derived)",
+      "dry_mass": 7519.0,
+      "id": "lm-remainder",
+      "description": "Everything except the descent engine and descent propellant.",
+      "stage": 1,
+      "provenance": {
+        "quality": "estimated",
+        "source": "NASA MSC IN 68-FM-78 (separation weight 33,055 lb, Table II propellant)",
+        "revision": "S4 29 Mar 1968",
+        "uncertainty_pct": null,
+        "units": "SI (kg, N, s, Pa, m, deg)",
+        "notes": "Derived: separation weight minus descent propellant minus engine mass. Lumps descent-stage structure and tanks, ascent stage with its propellant, RCS and landing gear; the split was not retrieved."
+      },
+      "com_m": null,
+      "inertia_kgm2": null,
+      "dimensions_m": null
     }
-  ]
+  ],
+  "layout": {}
 }
