@@ -1,26 +1,19 @@
 # Celeste SpaceWorks: Beginner's Demo Manual
 
-Celeste SpaceWorks is presented in the application as the Spacecraft
-Configurator. This manual uses both names: **Celeste SpaceWorks** for the
-project and **Spacecraft Configurator** for the app and its interface.
-
 This guide is for people seeing spacecraft design for the first time. It
 explains what the application is for, how to run a short demonstration, what
 the main numbers mean, and what not to claim from the results.
 
-> **Important:** This is an educational design and mission-screening demo, not
-> a tool for designing, certifying, or operating a real spacecraft. The
-> supplied vehicle values are illustrative. A green result means the modeled
-> path reaches the Moon's sphere of influence; it does not mean a real vehicle
-> can launch, enter lunar orbit, or land safely.
+> **Important:** Celeste SpaceWorks is an interactive spacecraft mission-design and analysis platform for engineering exploration and education. The platform combines representative spacecraft models with real astronomical data, including JPL DE440 ephemerides and historical mission references. Mission results should be interpreted as engineering-screening outcomes rather than flight certification, operational mission approval, or landing validation.
+
 
 ## 1. What is this project?
 
-Celeste SpaceWorks is an interactive platform for assembling a simplified
-spacecraft, seeing it in 3D, and exploring how design choices affect basic
-performance estimates and a modeled trip toward the Moon. It brings vehicle
-design, engineering screening, visualization, and mission analysis into one
-workflow.
+Celeste SpaceWorks is an interactive spacecraft mission-design and analysis platform that combines spacecraft assembly, engineering evaluation, 3D visualization, and Earth-to-Moon mission screening in a single workflow.
+
+Users can design a spacecraft, evaluate mass, propulsion, power, and stability characteristics, and then explore how those decisions affect mission feasibility.
+
+The platform connects vehicle design and mission analysis so that engineering tradeoffs can be understood in a visual and interactive environment.
 
 The app brings several questions into one place:
 
@@ -40,7 +33,7 @@ The app brings several questions into one place:
 - **How do components fit together?** The 3D view and placement editor make
   assembly layout easier to see and adjust.
 - **What data is still unknown?** Data readiness and provenance fields make
-  the difference between published, estimated, and illustrative inputs
+  the difference between published, estimated, and inputs
   visible.
 
 ### Why is that relevant?
@@ -58,6 +51,20 @@ good engineering questions, and explain why a result succeeds or fails under
 the model. It also provides a place to discuss how assumptions and data quality
 affect conclusions. It does not answer whether a proposed real spacecraft is
 safe, buildable, or ready to fly.
+
+## What uses real-world data?
+
+The mission environment incorporates several real-world datasets and references:
+
+- JPL DE440 ephemerides
+- Date-specific Earth-Moon geometry
+- Date-specific Moon and Sun positions
+- Lambert transfer calculations
+- Numerical trajectory propagation
+- Apollo 11 mission-reference data
+- Kennedy Space Center LC-39A historical launch-site reference
+
+Vehicle components use representative engineering models intended for design-space exploration and mission screening.
 
 ## 2. Start the application
 
@@ -221,7 +228,7 @@ Design** or **Load Saved Design**. Those buttons operate on the current save
 path, while built-in presets are loaded independently. The older **Lunar Demo**
 and **Load Apollo LM** buttons remain as one-click shortcuts.
 
-**Add component** buttons create a new part with an editable illustrative
+**Add component** buttons create a new part with an editable 
 starting value:
 
 | Button | What it represents |

@@ -1,6 +1,6 @@
 # Spacecraft Configurator
 
-An interactive spacecraft configuration designer. A DearPyGui panel edits the
+An interactive spacecraft mission-design and analysis platform. A DearPyGui panel edits the
 vehicle (engines, propellant tanks, payloads, landing legs, RCS thrusters, solar
 arrays, batteries, and avionics) and an OpenGL viewport shows it live in 3D.
 Mass, ideal delta-v, TWR, burn time, and installed power ratings update as the
@@ -37,7 +37,7 @@ consumption, landing contact, and landing-leg loads are not simulated. RCS
 thrust is reported separately and does not count as main-engine thrust or
 delta-v.
 
-## Why most designs fail the lunar mission
+## Mission Design Constraints
 
 The mission check is a single-stage screening, and it is strict. The vehicle needs
 thrust-to-weight above 1 to leave the pad, and about 12.6 km/s of ideal delta-v
@@ -49,8 +49,8 @@ falls short, too much fuel for the engines cannot lift off.
 The app opens with the **Lunar Demo** loaded. It passes the current single-stage
 reachability checks (liftoff thrust-to-weight and ideal delta-v for Earth ascent plus
 lunar transfer), so you can run the trajectory screening immediately. The **Lunar
-mission check** shows both numbers as you edit the design. This preset is illustrative,
-not flight hardware: its engine thrust and tank mass are deliberately unrealistic. A
+mission check** shows both numbers as you edit the design. This preset uses representative engineering models
+rather than flight-certified hardware A
 passing check is not proof that a real spacecraft can fly or land on the Moon.
 
 ## Mission flight animation
