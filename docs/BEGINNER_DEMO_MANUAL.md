@@ -1,20 +1,19 @@
-# Spacecraft Configurator: Beginner's Demo Manual
+# Celeste SpaceWorks: Beginner's Demo Manual
 
 This guide is for people seeing spacecraft design for the first time. It
 explains what the application is for, how to run a short demonstration, what
 the main numbers mean, and what not to claim from the results.
 
-> **Important:** This is an educational design and mission-screening demo, not
-> a tool for designing, certifying, or operating a real spacecraft. The
-> supplied vehicle values are illustrative. A green result means the modeled
-> path reaches the Moon's sphere of influence; it does not mean a real vehicle
-> can launch, enter lunar orbit, or land safely.
+> **Important:** Celeste SpaceWorks is an interactive spacecraft mission-design and analysis platform for engineering exploration and education. The platform combines representative spacecraft models with real astronomical data, including JPL DE440 ephemerides and historical mission references. Mission results should be interpreted as engineering-screening outcomes rather than flight certification, operational mission approval, or landing validation.
+
 
 ## 1. What is this project?
 
-The Spacecraft Configurator is an interactive way to assemble a simplified
-spacecraft, see it in 3D, and explore how design choices affect basic
-performance estimates and a modeled trip toward the Moon.
+Celeste SpaceWorks is an interactive spacecraft mission-design and analysis platform that combines spacecraft assembly, engineering evaluation, 3D visualization, and Earth-to-Moon mission screening in a single workflow.
+
+Users can design a spacecraft, evaluate mass, propulsion, power, and stability characteristics, and then explore how those decisions affect mission feasibility.
+
+The platform connects vehicle design and mission analysis so that engineering tradeoffs can be understood in a visual and interactive environment.
 
 The app brings several questions into one place:
 
@@ -34,7 +33,7 @@ The app brings several questions into one place:
 - **How do components fit together?** The 3D view and placement editor make
   assembly layout easier to see and adjust.
 - **What data is still unknown?** Data readiness and provenance fields make
-  the difference between published, estimated, and illustrative inputs
+  the difference between published, estimated, and  inputs
   visible.
 
 ### Why is that relevant?
@@ -52,6 +51,20 @@ good engineering questions, and explain why a result succeeds or fails under
 the model. It also provides a place to discuss how assumptions and data quality
 affect conclusions. It does not answer whether a proposed real spacecraft is
 safe, buildable, or ready to fly.
+
+## What uses real-world data?
+
+The mission environment incorporates several real-world datasets and references:
+
+- JPL DE440 ephemerides
+- Date-specific Earth-Moon geometry
+- Date-specific Moon and Sun positions
+- Lambert transfer calculations
+- Numerical trajectory propagation
+- Apollo 11 mission-reference data
+- Kennedy Space Center LC-39A historical launch-site reference
+
+Vehicle components use representative engineering models intended for design-space exploration and mission screening.
 
 ## 2. Start the application
 
@@ -88,7 +101,7 @@ encounter scenario.
 
 1. Start on the **Design** tab.
 2. Point out the component list and the 3D spacecraft.
-3. Say: “This is an illustrative spacecraft assembled from editable parts. Its
+3. Say: “This is an  spacecraft assembled from editable parts. Its
    numbers are chosen to demonstrate the software's checks; they are not
    specifications for real flight hardware.”
 4. Click **Lunar Demo** if you want to restore the starting example.
@@ -182,7 +195,7 @@ Design** or **Load Saved Design**. Those buttons operate on the current save
 path, while built-in presets are loaded independently. The older **Lunar Demo**
 and **Load Apollo LM** buttons remain as one-click shortcuts.
 
-**Add component** buttons create a new part with an editable illustrative
+**Add component** buttons create a new part with an editable 
 starting value:
 
 | Button | What it represents |
@@ -240,7 +253,7 @@ Be careful: using **Save Design** while working on the default design can
 overwrite that file. For a presentation, the safest option is to demonstrate
 without saving, or make a separate copy of the preset before editing it
 outside the app. **Clear Assembly** removes all parts from the current
-in-memory design; **Lunar Demo** restores the illustrative lunar example.
+in-memory design; **Lunar Demo** restores the  lunar example.
 
 ### Analysis tab
 
@@ -326,7 +339,7 @@ the mission again after making changes.
 | **Sphere of influence (SOI)** | A convenient approximate boundary where the Moon's gravity becomes important to the modeled spacecraft path. Entering the SOI is not the same as orbiting or landing on the Moon. |
 | **RCS** | Reaction-control system: smaller thrusters used to turn or make small adjustments. This app displays their ratings but does not use them to change the lunar path. |
 | **Avionics** | The electronics used for navigation, control, and spacecraft management. |
-| **Data provenance** | A record of where a number came from and whether it is measured, published, estimated, or illustrative. |
+| **Data provenance** | A record of where a number came from and whether it is measured, published, estimated, or . |
 
 ## 6. Demo scenario guide
 
@@ -375,7 +388,7 @@ To keep the demo honest, explain these limitations when showing a success:
 - The Apollo 11 panel is a separate fixed historical reference from NASA
   CR-61291. The source provides selected event and trajectory values, not the
   complete Saturn V data needed to predict a new launch or alternative design.
-- The built-in catalog and Lunar Demo contain synthetic illustrative values.
+- The built-in catalog and Lunar Demo contain synthetic  values.
   A successful result is not flight evidence.
 
 For the detailed equations and model assumptions, see
@@ -392,7 +405,7 @@ This script takes about five minutes. It can be split among several presenters.
 > “This project makes spacecraft design tradeoffs visible. We can assemble
 > components, see how mass and propellant affect ideal performance, and test
 > why a simplified mission screen passes or fails. The values in this demo are
-> illustrative, so this is a learning tool—not a flight design.”
+> , so this is a learning tool—not a flight design.”
 
 **Presenter 2 — Design (about one minute)**
 
@@ -447,6 +460,6 @@ This script takes about five minutes. It can be split among several presenters.
 - [Lunar landing roadmap](./LUNAR_LANDING_ROADMAP.md) — what would be needed
   to progress toward a realistic touchdown simulation.
 - [Lunar Demo preset](../presets/spacecraft/lunar_demo.json) — the editable
-  illustrative spacecraft definition.
+   spacecraft definition.
 - [Apollo 11 source and data notes](../LUNAR_DATA.md) — provenance for the
   fixed historical reference and documented data gaps.
