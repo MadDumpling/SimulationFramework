@@ -1,333 +1,251 @@
-For a hackathon, I'd write something like this in your roadmap/design document.
+Looking at what you've got now: stop adding physics and start adding storytelling UI.
 
-UX & Visualization Roadmap
-Goal
+You already have:
 
-The configurator should feel like designing a spacecraft, not filling out a form.
+Design tab ✅
+Analysis tab ✅
+Mission tab ✅
+Apollo 11 reference ✅
+Real ephemerides ✅
+Mission timeline ✅
+Component placement ✅
+COM visualization ✅
+Multiple component types ✅
 
-Users must be able to:
+That's enough technical depth for a hackathon.
 
-Add components.
-Select components directly in the 3D viewport.
-Modify component placement visually.
-Understand vehicle mass distribution and stability.
-See why a mission succeeds or fails.
+Highest-value UI additions
+1. Add a "Mission Readiness Score"
 
-The emphasis is usability and visual feedback rather than CAD-level accuracy.
+Top of Analysis tab:
 
-V1: Interactive Part Selection
-Requirements
-Every visible component is selectable.
-Clicking a part in the viewport highlights it.
-The selected part is also highlighted in the component list.
-The component inspector updates automatically.
-Visual Behavior
+MISSION READINESS
 
-Selected component:
+████████░░ 82%
 
-Orange outline or highlight.
-Slight brightness increase.
-Name shown in inspector.
+✅ Launch capable
+✅ Positive power margin
+✅ Sufficient delta-v
+✅ Lunar transfer possible
+⚠ COM unknown
 
-The existing picking system should be used:
 
-renderer.pick(x, y)
+Judges love this because they understand it instantly.
 
+You already have:
 
-No additional selection system is required.
+analysis.twr
+analysis.delta_v
+analysis.power_surplus_kw
+assess_definition()
 
-V2: Component Inspector
-Goal
 
-Allow direct editing of a selected component.
+so implementation is easy.
 
-Inspector Fields
+2. Add an Architecture Overview Card
 
-For all components:
+Above component list.
 
-Name
-Mass
-Stage
-Position
-Rotation
+VEHICLE SUMMARY
 
+Components: 12
+Stages: 2
 
-For engines:
+Engines: 1
+Fuel Tanks: 4
+RCS Thrusters: 8
+Solar Panels: 2
+Landing Legs: 4
 
-Thrust
-Specific Impulse
-Throttle Range
+Mission Target:
+Moon
 
 
-For tanks:
+Makes the spacecraft feel real.
 
-Capacity
-Current Propellant
-Residual Propellant
+3. Mission Status Cards
 
+Current:
 
-Changes update immediately in the viewport.
+MISSION FAILED
 
-V3: Manual Placement
-Goal
 
-Replace automatic placement with user-controlled placement.
+Better:
 
-Placement Data
+MISSION STATUS
 
-Each component may define:
+✅ Launch
+✅ Earth Orbit
+✅ TLI
+✅ Lunar Arrival
+❌ Safe Landing
 
-placement:
-    parent_id
-    parent_node
-    node
-    offset
-    rotation
+Landing simulation not implemented.
 
-User Experience
 
-Example:
+You've already implemented most of this timeline.
 
-Add Fuel Tank
+Just make it visually prominent.
 
+4. Vehicle Health Dashboard
 
-Tank appears.
+Put at top of Analysis.
 
-User selects:
+Use color coding.
 
-Position X
-Position Y
-Position Z
+MASS
+14,993 kg
 
+DELTA-V
+12.8 km/s
 
-Changes are reflected immediately.
+TWR
+1.76
 
-No restart or reload required.
+POWER
++4.2 kW
 
-V4: Attachment System
-Goal
+STABILITY
+37°
 
-Allow spacecraft assembly from connected parts.
 
-Supported Nodes
-TOP
-BOTTOM
-SIDE
-MOUNT
+Very hackathon-friendly.
 
-Workflow
+5. Launch Site Visualization
 
-Example:
+This is your biggest missed opportunity.
 
-Select Engine
+You said:
 
-Attach To:
-Main Fuel Tank
+we implemented real world launch site data from Earth to Moon
 
-Parent Node:
-Bottom
+Then SHOW IT.
 
+Mission tab:
 
-Engine snaps to the tank.
+Launch Site
 
-This is similar to:
+📍 Kennedy Space Center
+28.608°
+80.604°
 
-Kerbal Space Program
-Space Engineers
-Orbiter
-V5: Symmetry Placement
-Goal
+Departure:
+2026-10-30
 
-Speed up repetitive design tasks.
+Transfer:
+5 days
 
-Supported Modes
-Off
-2x
-3x
-4x
-6x
-8x
 
-Example
+Maybe even:
 
-Adding one landing leg:
+Earth → Moon
 
-Symmetry = 4
 
+small visualization.
 
-Creates:
+Judges instantly recognize this.
 
-Leg 1
-Leg 2
-Leg 3
-Leg 4
+6. "Why did this fail?"
 
+When mission fails:
 
-around the vehicle.
+Current:
 
-Useful for:
+MISSION FAILED
 
-Landing legs
-RCS thrusters
-Engine clusters
-Solar arrays
-V6: Center of Mass Visualization
-Goal
 
-Help users understand balance and stability.
+Instead:
 
-Display
+WHY IT FAILED
 
-Render:
+❌ TWR = 0.25
 
-Yellow sphere
+Needed > 1.0
 
-
-at vehicle center of mass.
-
-Use:
-
-mass_properties()
-
-
-already available in the codebase.
-
-Additional Information
-
-Display:
-
-Vehicle Mass
-Center of Mass
-Tip-over Angle
-
-
-in analysis panel.
-
-V7: Stability Visualization
-Goal
-
-Help users understand landing behavior.
-
-Display
-
-Show:
-
-Landing Footprint
-
-
-using landing gear radius.
-
-Render:
-
-Green circle
-
-
-under vehicle.
-
-Show:
-
-Tip-over limit
-
-
-using:
-
-static_tip_over_angle_deg()
-
-
-Warnings:
-
-UNSTABLE LANDER
-Center of mass outside safe region
-
-V8: Mission Outcome Visualization
-Goal
-
-Clearly communicate simulation results.
-
-Replace the current binary success/failure display.
-
-Mission States
-READY
-SIMULATING
-FAILED
-SAFE LANDING
-
-Flight Events
-
-Display timeline:
-
-✓ Launch
-
-✓ Earth Orbit
-
-✓ Translunar Injection
-
-✓ Lunar Arrival
-
-✗ Touchdown
-Hard Landing
+Recommendation:
+Add engines or reduce mass.
 
 
 or
 
-✓ Launch
+❌ Missing 2.7 km/s Delta-v
 
-✓ Earth Orbit
-
-✓ Translunar Injection
-
-✓ Lunar Arrival
-
-✓ Safe Landing
-
-V9: Apollo LM Showcase
-Demo Mode
-
-Provide:
-
-Load Apollo Lunar Module
+Recommendation:
+Increase fuel mass or engine efficiency.
 
 
-button.
+This turns it into a design-assistant.
 
-Displays:
+7. Highlight Component Data in Viewport
 
-Apollo LM
-NASA-derived reference vehicle
+When selecting a component:
+
+Display overlay:
+
+LM Descent Engine
+
+Thrust:
+46.7 kN
+
+Isp:
+311 s
+
+Mass:
+179 kg
 
 
-Shows:
+This is very flashy.
 
-Mass
-Engine
-Landing gear
-Apollo 11 landing site
+8. Real-Time Design Impact
 
-This should be the primary hackathon demonstration vehicle.
+The coolest UX addition you can make.
 
-Non-Goals for Hackathon
+When editing:
 
-The following are explicitly out of scope:
+Tank Capacity +10%
 
-Full CAD editing
-Real-time mesh modelling
-Finite-element analysis
-Full 6-DOF flight controls
-Detailed propellant slosh simulation
-GRAIL high-order gravity visualization
-Perfect Apollo telemetry reconstruction
 
-The objective is an intuitive spacecraft design and mission-planning experience, not an engineering certification tool.
+Immediately show:
 
-Hackathon MVP
+Δ Mass: +400 kg
+Δ TWR: -0.11
+Δ Delta-v: +640 m/s
 
-If time is limited, implement only:
 
-Part selection.
-Position editing.
-Attachment nodes.
-Center-of-mass visualization.
-Apollo LM preset.
-Improved mission-state display.
+Judges absolutely love seeing cause/effect.
 
-Those six features will provide the highest visible impact for judges and users.
+Biggest Missing Thing
+
+Honestly?
+
+A homepage panel that answers:
+
+Can this mission work?
+
+Right now information is scattered.
+
+I would add at the very top:
+
+MISSION VERDICT
+
+🟢 READY FOR LUNAR ENCOUNTER
+
+Launch capability ✅
+Transfer capability ✅
+Power positive ✅
+Trajectory successful ✅
+
+Closest approach:
+1,765 km
+
+
+or
+
+🔴 NOT READY
+
+Launch capability ❌
+TWR too low
+
+Suggested fix:
+Add thrust.
+
