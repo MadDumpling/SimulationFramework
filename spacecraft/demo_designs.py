@@ -26,6 +26,17 @@ def build_lunar_demo() -> Spacecraft:
     tank.capacity = tank.fuel_mass = 400_000.0
     tank.provenance = DataProvenance(quality="illustrative", notes=LUNAR_DEMO_NOTE)
 
-    for part in (engine, tank, component_from_catalog("payload"), component_from_catalog("power_system")):
+    for catalog_id in (
+        "payload",
+        "landing_leg",
+        "rcs_thruster",
+        "solar_panel",
+        "battery",
+        "avionics",
+    ):
+        part = component_from_catalog(catalog_id)
+        part.provenance = DataProvenance(quality="illustrative", notes=LUNAR_DEMO_NOTE)
+        craft.add_component(part)
+    for part in (engine, tank):
         craft.add_component(part)
     return craft

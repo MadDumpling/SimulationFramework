@@ -53,6 +53,13 @@ class MissionSimulationResult:
     data_source: str
     reasons: tuple[str, ...]
     assumptions: tuple[str, ...]
+    vehicle_warnings: tuple[str, ...] = ()
+    closest_approach_time: str | None = None
+    relative_speed_at_closest_approach_mps: float | None = None
+    integrator: str = "DOP853"
+    integration_max_step_s: float = 300.0
+    integration_rtol: float = 1e-9
+    integration_atol: float = 1e-3
 
 
 # Earth-ascent allowance and a typical trans-lunar injection delta-v, shared with the UI
@@ -254,6 +261,7 @@ def run_lunar_flyby_simulation(
         lunar_sphere_of_influence=soi_radius,
         trajectory_points=0,
         data_source="JPL DE440s not queried (vehicle precheck failed)",
+        vehicle_warnings=tuple(analysis.warnings),
         assumptions=(
             "200 km circular Earth parking orbit",
             "one impulsive departure burn from Earth parking orbit",
@@ -262,6 +270,12 @@ def run_lunar_flyby_simulation(
             "Moon encounter means crossing the Laplace sphere of influence, not capture or landing",
             "no launch-site, atmosphere, staging, guidance, or finite-burn model",
         ),
+        closest_approach_time=None,
+        relative_speed_at_closest_approach_mps=None,
+        integrator="DOP853",
+        integration_max_step_s=max_step,
+        integration_rtol=rtol,
+        integration_atol=atol,
     )
 
     if analysis.twr <= 1.0:
@@ -390,6 +404,7 @@ def run_lunar_flyby_simulation(
     moon_positions = moon_spline(evaluation_times)
     distances = np.linalg.norm(trajectory - moon_positions, axis=1)
     nearest_index = int(np.argmin(distances))
+    closest_time_seconds = float(evaluation_times[nearest_index])
     lower_index = max(0, nearest_index - 1)
     upper_index = min(len(evaluation_times) - 1, nearest_index + 1)
     if lower_index == upper_index:
@@ -406,9 +421,15 @@ def run_lunar_flyby_simulation(
             options={"xatol": 1e-3},
         )
         closest_distance = float(closest_time.fun)
+        closest_time_seconds = float(closest_time.x)
     closest_approach = closest_distance * u.m
     success = closest_approach <= soi_radius
     surface_impact = closest_distance <= MOON_RADIUS_M
+    closest_state = solution.sol(closest_time_seconds)
+    moon_velocity_at_closest = moon_spline.derivative()(closest_time_seconds)
+    relative_speed_at_closest = float(
+        np.linalg.norm(closest_state[3:] - moon_velocity_at_closest)
+    )
     if not success:
         reasons.append(
             "Propagated trajectory never entered the Moon's Laplace sphere of influence."
@@ -421,6 +442,10 @@ def run_lunar_flyby_simulation(
             "success": bool(success),
             "surface_impact": bool(surface_impact),
             "closest_approach": closest_approach.to(u.km),
+            "closest_approach_time": (
+                departure + TimeDelta(closest_time_seconds, format="sec")
+            ).isot,
+            "relative_speed_at_closest_approach_mps": relative_speed_at_closest,
             "trajectory_points": len(evaluation_times),
         },
         tli_delta_v=tli_required * u.m / u.s,

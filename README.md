@@ -1,10 +1,11 @@
 # Spacecraft Configurator
 
 An interactive spacecraft configuration designer. A DearPyGui panel edits the
-vehicle (engines, propellant tanks, payloads, power systems) and an OpenGL
-viewport shows it live in 3D. Mass, ideal delta-v, TWR, burn time, and power
-balance update as the design changes, and a lunar-reachability check propagates
-the vehicle against the JPL DE440s ephemeris.
+vehicle (engines, propellant tanks, payloads, landing legs, RCS thrusters, solar
+arrays, batteries, and avionics) and an OpenGL viewport shows it live in 3D.
+Mass, ideal delta-v, TWR, burn time, and installed power ratings update as the
+design changes, and a lunar-reachability check propagates the vehicle against
+the JPL DE440s ephemeris.
 
 ## Viewport controls
 
@@ -22,6 +23,19 @@ The designer panel adds components, edits their properties, duplicates parts
 **Exploded view** slider and grid toggle. Part sizes follow the design:
 tank length tracks propellant capacity, engine bell size tracks thrust, and
 solar-wing area tracks generation. This is a visualization aid, not CAD.
+Each part can be freely positioned or attached to another component, with
+XYZ offsets, Euler rotations, selectable attachment nodes, reset controls,
+and X/Z mirror-copy actions. **Frame the vehicle** and initial camera framing
+include manually placed parts.
+
+Landing gear, RCS, solar arrays, batteries, and avionics contribute their
+declared dry masses to vehicle metrics. Installed solar generation, battery
+capacity and charge/discharge ratings, and avionics/RCS electrical loads are
+shown in the power summary. These are nameplate values, not a time-dependent
+power simulation: illumination, pointing, state of charge, RCS propellant
+consumption, landing contact, and landing-leg loads are not simulated. RCS
+thrust is reported separately and does not count as main-engine thrust or
+delta-v.
 
 ## Why most designs fail the lunar mission
 
@@ -71,12 +85,34 @@ downloaded on first use and cached locally.
 This is trajectory screening, not capture or landing. It assumes a 200 km
 circular parking orbit, impulsive injection, a 9.4 km/s Earth-ascent allowance,
 and ideal rocket-equation delta-v. Catalog values are illustrative; enter
-verified masses and engine performance for meaningful results.
+verified masses and engine performance for meaningful results. After each run,
+the Mission tab reports vehicle mass/thrust/TWR, the complete delta-v budget and
+margins, closest-approach distance/time, lunar sphere-of-influence margin,
+relative speed at closest approach, estimated surface clearance, integrator
+settings, data source, and model assumptions. Failed runs
+include their blocking checks or measured miss distance and the run inputs that
+affect the modeled encounter. These diagnostics describe this model; they are
+not flight-validated failure predictions.
+
+## Apollo 11 historical reference
+
+The Mission tab also includes a fixed Apollo 11 / Saturn V AS-506 reference
+profile for 16 July 1969 from LC-39A. It exposes NASA CR-61291 launch, staging,
+parking-orbit, and TLI event/trajectory summary values. This is a source-backed
+historical reference, not a live simulation or raw-telemetry reconstruction:
+the source labels its event sequence predicted and does not provide the
+complete Saturn V stage mass, engine, aerodynamic, or guidance data needed to
+predict alternate designs. Keep it separate from the configurable Lunar Demo
+and JPL lunar-encounter screening.
 
 The product's actual success goal is a safe lunar touchdown. See
 [docs/LUNAR_LANDING_ROADMAP.md](docs/LUNAR_LANDING_ROADMAP.md) for the success
 definition, current-model limits, required real-world data, and implementation
 roadmap.
+
+For a plain-language explanation of the equations, mission checks, and
+selectable failure/encounter examples, see
+[docs/LUNAR_MISSION_PHYSICS_AND_DEMO_SCENARIOS.md](docs/LUNAR_MISSION_PHYSICS_AND_DEMO_SCENARIOS.md).
 
 ## Vehicle definition
 
@@ -123,7 +159,7 @@ simulation does not consume them yet.
 ```text
 app.py                   Entry point
 spacecraft/              Domain model (no UI/GL imports)
-  components.py          Engine, FuelTank, Payload, PowerSystem + illustrative catalog
+  components.py          Propulsion, structure, power, avionics + illustrative catalog
   propulsion.py          Throttle, ignition/restart, gimbal data
   provenance.py          Data source/quality/uncertainty records
   vehicle.py             Spacecraft assembly, landing gear, attitude limits

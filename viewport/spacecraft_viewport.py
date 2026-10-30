@@ -3,7 +3,6 @@ import numpy as np
 
 from spacecraft.geometry import layout_spacecraft, primitive, scale, translate
 
-from . import flight as flight_states
 from .flight import FlightAnimation
 from .orbit_camera import OrbitCamera
 
@@ -95,7 +94,7 @@ class SpacecraftViewport:
             return
         self.layout = layout_spacecraft(self.get_spacecraft(), self.explode)
         if self._reframe:
-            self.camera.frame(self.layout.center, self.layout.bounding_radius)
+            self.camera.frame(self.layout.camera_center, self.layout.bounding_radius)
             self._reframe = False
         else:
             self.camera.min_distance = max(0.2, self.layout.bounding_radius * 0.25)
@@ -189,4 +188,3 @@ class SpacecraftViewport:
 
 
 __all__ = ["SpacecraftViewport", "grid_lines"]
-

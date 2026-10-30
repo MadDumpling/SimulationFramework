@@ -3,7 +3,15 @@
 from dataclasses import dataclass, field
 import math
 
-from .components import Engine, FuelTank, PowerSystem
+from .components import (
+    Avionics,
+    Battery,
+    Engine,
+    FuelTank,
+    PowerSystem,
+    RcsThruster,
+    SolarPanel,
+)
 from .vehicle import Spacecraft
 
 STANDARD_GRAVITY = 9.80665
@@ -22,6 +30,7 @@ class SpacecraftAnalysis:
     fuel_mass: float = 0.0
     wet_mass: float = 0.0
     thrust: float = 0.0
+    rcs_thrust_n: float = 0.0
     isp: float = 0.0
     delta_v: float = 0.0
     twr: float = 0.0
@@ -30,6 +39,8 @@ class SpacecraftAnalysis:
     power_draw_kw: float = 0.0
     power_surplus_kw: float = 0.0
     power_storage_kwh: float = 0.0
+    power_max_discharge_kw: float = 0.0
+    power_max_charge_kw: float = 0.0
     warnings: list[str] = field(default_factory=list)
 
 
@@ -64,15 +75,39 @@ def analyze_spacecraft(spacecraft: Spacecraft) -> SpacecraftAnalysis:
     power_systems = [
         part for part in spacecraft.components if isinstance(part, PowerSystem)
     ]
+    solar_panels = [
+        part for part in spacecraft.components if isinstance(part, SolarPanel)
+    ]
+    batteries = [
+        part for part in spacecraft.components if isinstance(part, Battery)
+    ]
+    electrical_loads = [
+        part for part in spacecraft.components
+        if isinstance(part, (RcsThruster, Avionics))
+    ]
 
     result.dry_mass = sum(part.dry_mass for part in spacecraft.components)
     result.wet_mass = result.dry_mass + sum(tank.fuel_mass for tank in tanks)
     result.thrust = sum(engine.thrust for engine in engines)
+    result.rcs_thrust_n = sum(
+        thruster.thrust_n * thruster.thruster_count
+        for thruster in electrical_loads
+        if isinstance(thruster, RcsThruster)
+    )
     result.power_generation_kw = sum(
         system.generation_kw for system in power_systems
+    ) + sum(panel.generation_kw for panel in solar_panels)
+    result.power_storage_kwh = sum(
+        system.storage_kwh for system in power_systems
+    ) + sum(battery.capacity_kwh for battery in batteries)
+    result.power_max_discharge_kw = sum(
+        battery.max_discharge_kw for battery in batteries
     )
-    result.power_storage_kwh = sum(system.storage_kwh for system in power_systems)
-    result.power_draw_kw = sum(engine.power_draw_kw for engine in engines)
+    result.power_max_charge_kw = sum(battery.max_charge_kw for battery in batteries)
+    result.power_draw_kw = (
+        sum(engine.power_draw_kw for engine in engines)
+        + sum(part.power_draw_kw for part in electrical_loads)
+    )
     result.power_surplus_kw = result.power_generation_kw - result.power_draw_kw
 
     if not engines:
@@ -118,7 +153,7 @@ def analyze_spacecraft(spacecraft: Spacecraft) -> SpacecraftAnalysis:
     if result.wet_mass > 0.0:
         result.twr = result.thrust / (result.wet_mass * STANDARD_GRAVITY)
     if result.power_surplus_kw < 0.0:
-        result.warnings.append("Engine power demand exceeds installed generation.")
+        result.warnings.append("Installed electrical load exceeds generation.")
 
     return result
 

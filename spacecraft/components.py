@@ -198,11 +198,113 @@ class PowerSystem(Component):
         _require_nonnegative("storage_kwh", self.storage_kwh)
 
 
+@dataclass(kw_only=True)
+class LandingLeg(Component):
+    """Illustrative multi-leg landing-gear assembly and visual envelope."""
+
+    leg_count: int = 4
+    leg_length_m: float = 2.0
+    footprint_radius_m: float = 2.5
+    footpad_radius_m: float = 0.3
+    rated_load_n: float | None = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if (
+            not isinstance(self.leg_count, int)
+            or isinstance(self.leg_count, bool)
+            or not 3 <= self.leg_count <= 12
+        ):
+            raise ValueError("leg_count must be an integer from 3 to 12")
+        _require_positive("leg_length_m", self.leg_length_m)
+        _require_positive("footprint_radius_m", self.footprint_radius_m)
+        _require_positive("footpad_radius_m", self.footpad_radius_m)
+        _optional_positive("rated_load_n", self.rated_load_n)
+
+
+@dataclass(kw_only=True)
+class RcsThruster(Component):
+    """Auxiliary reaction-control thruster cluster; not a launch engine."""
+
+    thrust_n: float
+    isp_s: float
+    propellant_type: str
+    thruster_count: int = 4
+    minimum_impulse_bit_ns: float | None = None
+    power_draw_kw: float = 0.0
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        _require_positive("thrust_n", self.thrust_n)
+        _require_positive("isp_s", self.isp_s)
+        if not self.propellant_type.strip():
+            raise ValueError("propellant_type must not be empty")
+        if (
+            not isinstance(self.thruster_count, int)
+            or isinstance(self.thruster_count, bool)
+            or not 1 <= self.thruster_count <= 32
+        ):
+            raise ValueError("thruster_count must be an integer from 1 to 32")
+        _optional_positive("minimum_impulse_bit_ns", self.minimum_impulse_bit_ns)
+        _require_nonnegative("power_draw_kw", self.power_draw_kw)
+
+
+@dataclass(kw_only=True)
+class SolarPanel(Component):
+    """Deployable array with rated power at its documented reference conditions."""
+
+    area_m2: float
+    generation_kw: float
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        _require_positive("area_m2", self.area_m2)
+        _require_nonnegative("generation_kw", self.generation_kw)
+
+
+@dataclass(kw_only=True)
+class Battery(Component):
+    """Electrical energy storage; discharge power and capacity are separate limits."""
+
+    capacity_kwh: float
+    max_charge_kw: float = 0.0
+    max_discharge_kw: float = 0.0
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        _require_nonnegative("capacity_kwh", self.capacity_kwh)
+        _require_nonnegative("max_charge_kw", self.max_charge_kw)
+        _require_nonnegative("max_discharge_kw", self.max_discharge_kw)
+
+
+@dataclass(kw_only=True)
+class Avionics(Component):
+    """Vehicle guidance, navigation, and control electronics electrical load."""
+
+    power_draw_kw: float
+    redundancy: int = 1
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        _require_nonnegative("power_draw_kw", self.power_draw_kw)
+        if (
+            not isinstance(self.redundancy, int)
+            or isinstance(self.redundancy, bool)
+            or self.redundancy < 1
+        ):
+            raise ValueError("redundancy must be an integer of at least 1")
+
+
 _COMPONENT_TYPES = {
     "Engine": Engine,
     "FuelTank": FuelTank,
     "Payload": Payload,
     "PowerSystem": PowerSystem,
+    "LandingLeg": LandingLeg,
+    "RcsThruster": RcsThruster,
+    "SolarPanel": SolarPanel,
+    "Battery": Battery,
+    "Avionics": Avionics,
 }
 
 # Nested dataclass fields that need rebuilding from JSON objects.
@@ -249,6 +351,47 @@ _CATALOG = {
         "storage_kwh": 5.0,
         "description": "Illustrative power-system parameters.",
     },
+    "landing_leg": {
+        "name": "Demo landing gear",
+        "dry_mass": 180.0,
+        "leg_count": 4,
+        "leg_length_m": 2.0,
+        "footprint_radius_m": 2.5,
+        "footpad_radius_m": 0.3,
+        "description": "Illustrative landing-leg structure; no contact simulation.",
+    },
+    "rcs_thruster": {
+        "name": "Demo RCS cluster",
+        "dry_mass": 24.0,
+        "thrust_n": 450.0,
+        "isp_s": 220.0,
+        "propellant_type": "monomethylhydrazine / nitrogen tetroxide",
+        "thruster_count": 4,
+        "minimum_impulse_bit_ns": 10.0,
+        "description": "Illustrative attitude-control thrusters; propellant use is not simulated.",
+    },
+    "solar_panel": {
+        "name": "Demo solar array",
+        "dry_mass": 45.0,
+        "area_m2": 12.0,
+        "generation_kw": 2.4,
+        "description": "Illustrative rated output; illumination and pointing are not simulated.",
+    },
+    "battery": {
+        "name": "Demo battery",
+        "dry_mass": 35.0,
+        "capacity_kwh": 8.0,
+        "max_charge_kw": 2.0,
+        "max_discharge_kw": 3.0,
+        "description": "Illustrative electrical storage; charge state is not simulated.",
+    },
+    "avionics": {
+        "name": "Demo avionics",
+        "dry_mass": 18.0,
+        "power_draw_kw": 0.35,
+        "redundancy": 2,
+        "description": "Illustrative guidance, navigation, and control electronics.",
+    },
 }
 
 
@@ -263,6 +406,11 @@ def component_from_catalog(catalog_id: str) -> Component:
         "fuel_tank": FuelTank,
         "payload": Payload,
         "power_system": PowerSystem,
+        "landing_leg": LandingLeg,
+        "rcs_thruster": RcsThruster,
+        "solar_panel": SolarPanel,
+        "battery": Battery,
+        "avionics": Avionics,
     }[catalog_id]
     return component_class(
         provenance=DataProvenance(quality="illustrative", notes=_ILLUSTRATIVE_NOTE),

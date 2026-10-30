@@ -7,7 +7,12 @@ from spacecraft.components import Engine, FuelTank, Payload
 from spacecraft.mission import MissionSimulationResult
 from spacecraft.placement import Placement
 from spacecraft.presets import load_spacecraft
-from ui.spacecraft_designer import DEFAULT_PRESET, SpacecraftDesignerUI
+from ui.mission_outcome import lunar_mission_report
+from ui.spacecraft_designer import (
+    DEFAULT_PRESET,
+    SHOWCASE_SCENARIOS,
+    SpacecraftDesignerUI,
+)
 
 
 def test_default_preset_is_the_lunar_capable_demo():
@@ -15,6 +20,36 @@ def test_default_preset_is_the_lunar_capable_demo():
 
     assert craft.name == "Lunar-capable demo (illustrative)"
     assert {Engine, FuelTank, Payload} <= {type(part) for part in craft.components}
+    assert {
+        "LandingLeg",
+        "RcsThruster",
+        "SolarPanel",
+        "Battery",
+        "Avionics",
+    } <= {type(part).__name__ for part in craft.components}
+
+
+def test_loading_showcase_scenario_sets_preset_and_mission_inputs(monkeypatch):
+    scenario_name = "Failure — insufficient TLI propellant"
+    scenario = SHOWCASE_SCENARIOS[scenario_name]
+    monkeypatch.setattr(
+        designer_module.dpg,
+        "get_value",
+        lambda tag: scenario_name if tag == "lunar_demo_scenario" else None,
+    )
+    designer_module.dpg.set_value.reset_mock()
+    ui = SpacecraftDesignerUI(EventBus())
+
+    ui.load_demo_scenario()
+
+    assert ui.spacecraft.name == "Failure demo — insufficient TLI propellant"
+    set_values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert set_values["lunar_departure_date"] == scenario["departure_date"]
+    assert set_values["lunar_transfer_days"] == scenario["transfer_days"]
+    assert "date-specific lunar injection" in set_values["lunar_reachability_details"]
 
 
 def test_designer_callbacks_add_remove_parts_and_publish_events(tmp_path):
@@ -87,6 +122,106 @@ def test_lunar_mission_callback_runs_trajectory_and_reports_result(monkeypatch):
     ui._invalidate_mission_result(None, 6.0, None)
 
     assert ui.mission_result is None
+
+
+def test_lunar_mission_report_explains_miss_with_run_metrics():
+    ui = SpacecraftDesignerUI(EventBus())
+    result = MissionSimulationResult(
+        simulated=True,
+        success=False,
+        surface_impact=False,
+        departure_time="2030-01-01T00:00:00.000",
+        arrival_time="2030-01-06T00:00:00.000",
+        transfer_time=5.0 * u.day,
+        tli_delta_v=3.1 * u.km / u.s,
+        required_earth_departure_delta_v=9.4 * u.km / u.s,
+        available_delta_v=14.0 * u.km / u.s,
+        closest_approach=80_000.0 * u.km,
+        lunar_sphere_of_influence=66_000.0 * u.km,
+        trajectory_points=5000,
+        data_source="JPL DE440s",
+        reasons=("Propagated trajectory never entered the lunar SOI.",),
+        assumptions=("Phase-aligned parking orbit is assumed.",),
+        closest_approach_time="2030-01-05T12:00:00.000",
+    )
+
+    report = lunar_mission_report(result, ui.analysis)
+
+    assert "MISSION FAILED" in report
+    assert "Initial thrust-to-weight:" in report
+    assert "Ideal vehicle delta-v available: 14.000 km/s" in report
+    assert "Delta-v after ascent allowance: +4.600 km/s" in report
+    assert "Margin after TLI: +1.500 km/s" in report
+    assert "Closest approach to Moon center: 80,000.0 km" in report
+    assert "Closest-approach time (UTC): 2030-01-05T12:00:00.000" in report
+    assert "Relative speed at closest approach: not available." in report
+    assert "SOI margin: -14,000.0 km (outside the SOI boundary)" in report
+    assert "Integrator: DOP853; max step 300 s" in report
+    assert "stayed 14,000.0 km outside" in report
+    assert "does not optimize a correction burn or launch window" in report
+    assert "MODEL ASSUMPTIONS AND LIMITS" in report
+
+
+def test_lunar_mission_report_shows_precheck_failure_and_negative_delta_v():
+    ui = SpacecraftDesignerUI(EventBus())
+    result = MissionSimulationResult(
+        simulated=False,
+        success=False,
+        surface_impact=False,
+        departure_time="2030-01-01T00:00:00.000",
+        arrival_time="2030-01-06T00:00:00.000",
+        transfer_time=5.0 * u.day,
+        tli_delta_v=0.0 * u.km / u.s,
+        required_earth_departure_delta_v=9.4 * u.km / u.s,
+        available_delta_v=6.2 * u.km / u.s,
+        closest_approach=None,
+        lunar_sphere_of_influence=66_000.0 * u.km,
+        trajectory_points=0,
+        data_source="JPL DE440s not queried (vehicle precheck failed)",
+        reasons=("Insufficient vehicle delta-v after the Earth-ascent allowance.",),
+        assumptions=("Finite vehicle propulsion is reduced to ideal delta-v checks.",),
+    )
+
+    report = lunar_mission_report(result, ui.analysis)
+
+    assert "NOT PROPAGATED" in report
+    assert "Delta-v after ascent allowance: -3.200 km/s" in report
+    assert "Required TLI: Not solved; vehicle pre-check stopped the run." in report
+    assert "Margin after TLI: unavailable; TLI was not solved." in report
+    assert "FAILURE REASONS" in report
+    assert "Closest approach to Moon center: Not available" in report
+
+
+def test_lunar_mission_report_explains_vehicle_fuel_warnings():
+    ui = SpacecraftDesignerUI(EventBus())
+    result = MissionSimulationResult(
+        simulated=False,
+        success=False,
+        surface_impact=False,
+        departure_time="2030-01-01T00:00:00.000",
+        arrival_time="2030-01-06T00:00:00.000",
+        transfer_time=5.0 * u.day,
+        tli_delta_v=0.0 * u.km / u.s,
+        required_earth_departure_delta_v=9.4 * u.km / u.s,
+        available_delta_v=0.0 * u.km / u.s,
+        closest_approach=None,
+        lunar_sphere_of_influence=66_000.0 * u.km,
+        trajectory_points=0,
+        data_source="JPL DE440s not queried (vehicle precheck failed)",
+        reasons=("Insufficient vehicle delta-v after the 9.40 km/s Earth-ascent allowance.",),
+        vehicle_warnings=(
+            "Some tank propellant does not match the installed engine fuel type.",
+            "No propellant compatible with the installed engine is loaded.",
+        ),
+        assumptions=("No trajectory was propagated.",),
+    )
+
+    report = lunar_mission_report(result, ui.analysis)
+
+    assert "FAILURE REASONS" in report
+    assert "VEHICLE WARNINGS" in report
+    assert "does not match the installed engine fuel type" in report
+    assert "No propellant compatible with the installed engine is loaded" in report
 
 
 def test_selection_is_published_and_cleared_when_part_removed(tmp_path):
@@ -244,6 +379,63 @@ def test_residual_propellant_edit_changes_usable_propellant(tmp_path):
 
     assert tank.residual_propellant == 500.0
     assert ui.analysis.fuel_mass == before - 500.0
+
+
+def test_new_subsystem_properties_can_be_edited_and_placement_reset(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    ui.clear()
+
+    ui.add_component(None, None, "landing_leg")
+    gear = ui.spacecraft.components[-1]
+    ui.update_component("leg_count", 6, (gear.id, "leg_count"))
+    ui.update_component("rated_load", 12_000.0, (gear.id, "rated_load_n"))
+    ui.set_component_placement_value(
+        "offset", 4.0, (gear.id, "offset_x")
+    )
+    assert gear.leg_count == 6
+    assert gear.rated_load_n == 12_000.0
+    assert gear.placement.offset[0] == 4.0
+
+    ui.reset_component_placement(None, None, gear.id)
+
+    assert gear.placement is None
+
+
+def test_analysis_panel_reports_auxiliary_thrust_and_power_surplus():
+    ui = SpacecraftDesignerUI(EventBus())
+    ui.clear()
+    ui.add_component(None, None, "rcs_thruster")
+    ui.add_component(None, None, "solar_panel")
+    ui.add_component(None, None, "avionics")
+    ui.built = True
+    designer_module.dpg.set_value.reset_mock()
+
+    ui.refresh()
+
+    values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert values["spacecraft_rcs_thrust"].startswith("RCS thrust: 1,800.0 N")
+    assert "+2.05 kW surplus" in values["spacecraft_power"]
+
+
+def test_mirror_copy_reflects_placement_and_selects_the_copy(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(part for part in ui.spacecraft.components if isinstance(part, Engine))
+    engine.placement = Placement(
+        offset=(2.0, 3.0, 4.0),
+        rotation_deg=(10.0, 20.0, 30.0),
+    )
+
+    ui.mirror_component(None, None, (engine.id, "x"))
+
+    copy = ui.spacecraft.components[-1]
+    assert copy.id != engine.id
+    assert copy.placement.offset == (-2.0, 3.0, 4.0)
+    assert copy.placement.rotation_deg == engine.placement.rotation_deg
+    assert copy.placement.symmetry_group == engine.id
+    assert ui.selected_id == copy.id
 
 
 def test_load_apollo_lm_replaces_design_without_changing_save_path(tmp_path):

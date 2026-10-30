@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "name": "Failure demo — insufficient lift-off thrust",
+  "revision": "Showcase scenario: adequate ideal delta-v, TWR below one",
+  "provenance": {
+    "quality": "illustrative",
+    "notes": "Synthetic teaching example; not a real vehicle."
+  },
+  "components": [
+    {
+      "type": "Engine",
+      "id": "low-thrust-engine",
+      "name": "Under-thrust demo engine",
+      "dry_mass": 500.0,
+      "thrust": 1000000.0,
+      "isp": 300.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic 1 MN thrust selected to fail the liftoff TWR check."
+      }
+    },
+    {
+      "type": "FuelTank",
+      "id": "low-thrust-tank",
+      "name": "Demo heavy tank",
+      "dry_mass": 2500.0,
+      "capacity": 400000.0,
+      "fuel_mass": 400000.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic large propellant load."
+      }
+    },
+    {
+      "type": "Payload",
+      "id": "low-thrust-payload",
+      "name": "Demo payload",
+      "dry_mass": 1000.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic payload."
+      }
+    },
+    {
+      "type": "PowerSystem",
+      "id": "low-thrust-power",
+      "name": "Demo solar array",
+      "dry_mass": 80.0,
+      "generation_kw": 1.2,
+      "storage_kwh": 5.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic power system."
+      }
+    }
+  ],
+  "layout": {}
+}

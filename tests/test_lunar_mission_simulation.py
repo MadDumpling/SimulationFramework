@@ -77,6 +77,12 @@ def test_simulation_propagates_vehicle_and_reports_moon_encounter(monkeypatch):
     assert result.trajectory_points > 10
     assert result.tli_delta_v > 0.0 * u.m / u.s
     assert result.closest_approach > 0.0 * u.km
+    assert result.closest_approach_time is not None
+    assert result.closest_approach_time.startswith("2024-01-")
+    assert result.relative_speed_at_closest_approach_mps is not None
+    assert result.relative_speed_at_closest_approach_mps > 0.0
+    assert result.integrator == "DOP853"
+    assert result.integration_max_step_s == 600.0
     assert result.surface_impact == (
         result.closest_approach <= mission.MOON_RADIUS_M * u.m
     )

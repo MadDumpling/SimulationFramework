@@ -16,10 +16,15 @@ from spacecraft.analysis import (
 )
 from spacecraft.apollo_lm import PRESET_PATH as APOLLO_LM_PRESET
 from spacecraft.components import (
+    Avionics,
+    Battery,
     Component,
     Engine,
     FuelTank,
+    LandingLeg,
     PowerSystem,
+    RcsThruster,
+    SolarPanel,
     component_from_catalog,
     component_from_dict,
     component_to_dict,
@@ -34,7 +39,14 @@ from spacecraft.provenance import QUALITIES
 from spacecraft.readiness import assess_definition
 from spacecraft.vehicle import Spacecraft
 
-from .mission_outcome import can_lift_off, lunar_prescreen, prescreen_text
+from .mission_outcome import (
+    can_lift_off,
+    apollo11_reference_report,
+    apollo11_reference_summary,
+    lunar_mission_report,
+    lunar_prescreen,
+    prescreen_text,
+)
 from .mission_timeline import mission_timeline
 
 DEFAULT_PRESET = (
@@ -43,6 +55,50 @@ DEFAULT_PRESET = (
     / "spacecraft"
     / "lunar_demo.json"
 )
+SHOWCASE_SCENARIOS = {
+    "Lunar encounter — no surface impact": {
+        "preset": "lunar_demo.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 6.0,
+        "description": (
+            "Reference encounter: the propagated path enters the lunar SOI without "
+            "intersecting the mean-radius surface in this run."
+        ),
+    },
+    "Lunar encounter — surface impact estimate": {
+        "preset": "lunar_demo.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": (
+            "Same vehicle, different transfer time: this modeled path enters the lunar "
+            "SOI and intersects the mean-radius surface. Impact is not a safe landing."
+        ),
+    },
+    "Failure — insufficient lift-off thrust": {
+        "preset": "lunar_low_thrust.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "Good ideal delta-v cannot compensate for TWR below 1.0.",
+    },
+    "Failure — insufficient Earth-ascent delta-v": {
+        "preset": "lunar_ascent_shortfall.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "The design has thrust, but its ideal delta-v is below the 9.4 km/s ascent allowance.",
+    },
+    "Failure — insufficient TLI propellant": {
+        "preset": "lunar_tli_shortfall.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "It clears the initial ascent check but cannot pay the date-specific lunar injection burn.",
+    },
+    "Failure — engine/tank propellant mismatch": {
+        "preset": "lunar_propellant_mismatch.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "The tank is full, but none of its propellant is compatible with the engine.",
+    },
+}
 
 
 class _MissionRun:
@@ -122,6 +178,28 @@ class SpacecraftDesignerUI:
                                 callback=self.add_component,
                                 user_data=catalog_id,
                             )
+                    dpg.add_text("Landing and spacecraft subsystems")
+                    with dpg.group(horizontal=True):
+                        for label, catalog_id in (
+                            ("Landing gear", "landing_leg"),
+                            ("RCS", "rcs_thruster"),
+                            ("Solar panel", "solar_panel"),
+                        ):
+                            dpg.add_button(
+                                label=f"+ {label}",
+                                callback=self.add_component,
+                                user_data=catalog_id,
+                            )
+                    with dpg.group(horizontal=True):
+                        for label, catalog_id in (
+                            ("Battery", "battery"),
+                            ("Avionics", "avionics"),
+                        ):
+                            dpg.add_button(
+                                label=f"+ {label}",
+                                callback=self.add_component,
+                                user_data=catalog_id,
+                            )
                     dpg.add_text("Viewport controls", bullet=True)
                     dpg.add_slider_float(
                         label="Exploded view",
@@ -165,6 +243,7 @@ class SpacecraftDesignerUI:
                         ("Fuel mass: 0 kg", "spacecraft_fuel_mass"),
                         ("Wet mass: 0 kg", "spacecraft_wet_mass"),
                         ("Thrust: 0 kN", "spacecraft_thrust"),
+                        ("RCS thrust: 0 N (auxiliary)", "spacecraft_rcs_thrust"),
                         ("Delta-v: 0 m/s", "spacecraft_delta_v"),
                         ("TWR: 0.00", "spacecraft_twr"),
                         ("Burn time: 0 s", "spacecraft_burn_time"),
@@ -233,6 +312,38 @@ class SpacecraftDesignerUI:
                     dpg.add_text("", tag="spacecraft_data_readiness", wrap=460)
                 with dpg.tab(label="Mission"):
                     dpg.add_text("Lunar mission screening · JPL DE440s", bullet=True)
+                    dpg.add_text(
+                        apollo11_reference_summary(),
+                        color=(175, 190, 210),
+                        tag="apollo11_reference_summary",
+                    )
+                    with dpg.collapsing_header(
+                        label="Apollo 11 historical reference · AS-506",
+                        default_open=False,
+                    ):
+                        dpg.add_text(
+                            apollo11_reference_report(),
+                            tag="apollo11_reference_report",
+                            wrap=460,
+                        )
+                    dpg.add_separator()
+                    dpg.add_combo(
+                        items=list(SHOWCASE_SCENARIOS),
+                        default_value=next(iter(SHOWCASE_SCENARIOS)),
+                        label="Demo scenario",
+                        width=440,
+                        tag="lunar_demo_scenario",
+                    )
+                    dpg.add_button(
+                        label="Load demo scenario",
+                        callback=self.load_demo_scenario,
+                    )
+                    dpg.add_text(
+                        "Loads a spacecraft preset and sets the example departure "
+                        "date and transfer time.",
+                        color=(175, 190, 210),
+                        wrap=460,
+                    )
                     dpg.add_combo(
                         items=[profile.name for profile in MISSION_PROFILES.values()],
                         default_value=MISSION_PROFILES[self.mission_id].name,
@@ -273,7 +384,12 @@ class SpacecraftDesignerUI:
                         tag="lunar_reachability_status",
                         wrap=460,
                     )
-                    dpg.add_text("", tag="lunar_reachability_details", wrap=460)
+                    dpg.add_text(
+                        "",
+                        tag="lunar_reachability_details",
+                        wrap=460,
+                        color=(195, 205, 220),
+                    )
                     dpg.add_separator()
                     dpg.add_text("Mission timeline", bullet=True)
                     dpg.add_group(tag="lunar_timeline_container")
@@ -458,6 +574,46 @@ class SpacecraftDesignerUI:
                     ("storage_kwh", "Energy storage (kWh)", 0.0, None),
                 ]
             )
+        elif isinstance(component, LandingLeg):
+            fields.extend(
+                [
+                    ("leg_length_m", "Leg length (m)", 0.001, None),
+                    ("footprint_radius_m", "Footprint radius (m)", 0.001, None),
+                    ("footpad_radius_m", "Footpad radius (m)", 0.001, None),
+                    ("rated_load_n", "Rated load (N; 0 = unknown)", 0.0, None),
+                ]
+            )
+        elif isinstance(component, RcsThruster):
+            fields.extend(
+                [
+                    ("thrust_n", "Thrust per thruster (N)", 0.001, None),
+                    ("isp_s", "Specific impulse (s)", 0.001, None),
+                    (
+                        "minimum_impulse_bit_ns",
+                        "Minimum impulse bit (N·s; 0 = unknown)",
+                        0.0,
+                        None,
+                    ),
+                    ("power_draw_kw", "Power draw (kW)", 0.0, None),
+                ]
+            )
+        elif isinstance(component, SolarPanel):
+            fields.extend(
+                [
+                    ("area_m2", "Deployed area (m²)", 0.001, None),
+                    ("generation_kw", "Rated generation (kW)", 0.0, None),
+                ]
+            )
+        elif isinstance(component, Battery):
+            fields.extend(
+                [
+                    ("capacity_kwh", "Energy capacity (kWh)", 0.0, None),
+                    ("max_charge_kw", "Maximum charge power (kW)", 0.0, None),
+                    ("max_discharge_kw", "Maximum discharge power (kW)", 0.0, None),
+                ]
+            )
+        elif isinstance(component, Avionics):
+            fields.append(("power_draw_kw", "Power draw (kW)", 0.0, None))
         return fields
 
     def _add_definition_controls(self, component):
@@ -516,7 +672,28 @@ class SpacecraftDesignerUI:
                 user_data=(component.id, "throttle_max_fraction"),
                 tag=f"spacecraft_{component.id}_throttle_max",
             )
-
+        integer_fields = ()
+        if isinstance(component, LandingLeg):
+            integer_fields = (("leg_count", "Number of legs", 3, 12),)
+        elif isinstance(component, RcsThruster):
+            integer_fields = (("thruster_count", "Number of thrusters", 1, 32),)
+        elif isinstance(component, Avionics):
+            integer_fields = (("redundancy", "Redundant systems", 1, None),)
+        for field_name, label, minimum, maximum in integer_fields:
+            options = {
+                "label": label,
+                "default_value": getattr(component, field_name),
+                "min_value": minimum,
+                "min_clamped": True,
+                "width": 220,
+                "parent": parent,
+                "callback": self.update_component,
+                "user_data": (component.id, field_name),
+            }
+            if maximum is not None:
+                options["max_value"] = maximum
+                options["max_clamped"] = True
+            dpg.add_input_int(**options)
     def _add_placement_controls(self, component):
         labels = {"auto": "Automatic layout", "root": "Free placement"}
         parent_by_label = {}
@@ -550,38 +727,51 @@ class SpacecraftDesignerUI:
             tag=f"spacecraft_{component.id}_placement_mode",
         )
         dpg.add_text(
-            "Position is in vehicle coordinates; attached-part offsets use the "
-            "parent frame.",
+            "XYZ offsets are metres in the vehicle frame for free parts, or the "
+            "parent frame for attached parts. Rotations use local Euler XYZ degrees.",
             parent=parent,
             color=(150, 165, 185),
             wrap=450,
         )
+        with dpg.group(horizontal=True, parent=parent):
+            dpg.add_button(
+                label="Return to automatic layout",
+                callback=self.reset_component_placement,
+                user_data=component.id,
+            )
+            dpg.add_button(
+                label="Reset rotation",
+                callback=self.reset_component_rotation,
+                user_data=component.id,
+            )
         position = (
             current.offset
             if current is not None
             else self._component_visual_center(component.id)
         )
-        for axis, value in zip("xyz", position):
-            dpg.add_input_float(
-                label=f"Position / offset {axis.upper()} (m)",
-                default_value=value,
-                width=300,
-                parent=parent,
-                callback=self.set_component_placement_value,
-                user_data=(component.id, f"offset_{axis}"),
-                tag=f"spacecraft_{component.id}_position_{axis}",
-            )
+        with dpg.group(horizontal=True, parent=parent):
+            for axis, value in zip("xyz", position):
+                dpg.add_input_float(
+                    label=f"{axis.upper()} (m)",
+                    default_value=value,
+                    width=130,
+                    parent=parent,
+                    callback=self.set_component_placement_value,
+                    user_data=(component.id, f"offset_{axis}"),
+                    tag=f"spacecraft_{component.id}_position_{axis}",
+                )
         rotation = current.rotation_deg if current is not None else (0.0, 0.0, 0.0)
-        for axis, value in zip("xyz", rotation):
-            dpg.add_input_float(
-                label=f"Rotation {axis.upper()} (deg)",
-                default_value=value,
-                width=300,
-                parent=parent,
-                callback=self.set_component_placement_value,
-                user_data=(component.id, f"rotation_{axis}"),
-                tag=f"spacecraft_{component.id}_rotation_{axis}",
-            )
+        with dpg.group(horizontal=True, parent=parent):
+            for axis, value in zip("xyz", rotation):
+                dpg.add_input_float(
+                    label=f"R{axis.upper()} (deg)",
+                    default_value=value,
+                    width=130,
+                    parent=parent,
+                    callback=self.set_component_placement_value,
+                    user_data=(component.id, f"rotation_{axis}"),
+                    tag=f"spacecraft_{component.id}_rotation_{axis}",
+                )
         if current is not None and current.parent_id is not None:
             dpg.add_combo(
                 items=list(NODE_NAMES),
@@ -608,6 +798,17 @@ class SpacecraftDesignerUI:
                 parent=parent,
                 callback=self.set_component_placement_value,
                 user_data=(component.id, "angle_deg"),
+            )
+        with dpg.group(horizontal=True, parent=parent):
+            dpg.add_button(
+                label="Mirror copy X",
+                callback=self.mirror_component,
+                user_data=(component.id, "x"),
+            )
+            dpg.add_button(
+                label="Mirror copy Z",
+                callback=self.mirror_component,
+                user_data=(component.id, "z"),
             )
 
     def _add_com_controls(self, component):
@@ -673,6 +874,58 @@ class SpacecraftDesignerUI:
         self._set_data_message("")
         self._placement_changed()
         self._rebuild_component_controls()
+
+    def reset_component_placement(self, sender, app_data, user_data):
+        component = self.spacecraft.get_component(user_data)
+        if component is None:
+            return
+        component.placement = None
+        self._placement_changed()
+        self._rebuild_component_controls()
+
+    def reset_component_rotation(self, sender, app_data, user_data):
+        component = self.spacecraft.get_component(user_data)
+        if component is None:
+            return
+        placement = component.placement or Placement(
+            offset=self._component_visual_center(component.id)
+        )
+        component.placement = replace(placement, rotation_deg=(0.0, 0.0, 0.0))
+        self._placement_changed()
+        self._rebuild_component_controls()
+
+    def mirror_component(self, sender, app_data, user_data):
+        component_id, axis_name = user_data
+        original = self.spacecraft.get_component(component_id)
+        if original is None:
+            return
+        axis = "xyz".index(axis_name)
+        data = component_to_dict(original)
+        data["id"] = str(uuid4())
+        duplicate = component_from_dict(data)
+        placement = original.placement or Placement(
+            offset=self._component_visual_center(component_id)
+        )
+        offset = list(placement.offset)
+        offset[axis] *= -1.0
+        angle = placement.angle_deg
+        if axis_name == "x":
+            angle = 180.0 - angle
+        else:
+            angle = -angle
+        symmetry_group = placement.symmetry_group or original.id
+        duplicate.placement = replace(
+            placement,
+            offset=tuple(offset),
+            angle_deg=angle,
+            symmetry_group=symmetry_group,
+        )
+        duplicate.name = f"{original.name} mirrored {axis_name.upper()}"
+        self.spacecraft.add_component(duplicate)
+        self.events.publish("component.added", duplicate)
+        self.events.publish("spacecraft.updated", self.spacecraft)
+        self._placement_changed()
+        self.select_component(duplicate.id)
 
     def _would_create_attachment_cycle(self, component_id, parent_id):
         current_id = parent_id
@@ -814,13 +1067,24 @@ class SpacecraftDesignerUI:
                 return
         else:
             old_value = getattr(component, field_name)
-            setattr(component, field_name, float(app_data))
+            integer_fields = {"leg_count", "thruster_count", "redundancy"}
+            optional_fields = {"rated_load_n", "minimum_impulse_bit_ns"}
+            entered_value = float(app_data)
+            if field_name in optional_fields:
+                new_value = entered_value if entered_value > 0.0 else None
+            elif field_name in integer_fields:
+                new_value = int(app_data)
+            else:
+                new_value = entered_value
+            setattr(component, field_name, new_value)
             try:
                 component.__post_init__()
-            except ValueError:
+            except (TypeError, ValueError):
                 setattr(component, field_name, old_value)
-                dpg.set_value(sender, old_value)
+                dpg.set_value(sender, old_value or 0.0)
                 return
+            if field_name in optional_fields and dpg.does_item_exist(sender):
+                dpg.set_value(sender, new_value or 0.0)
         if field_name == "capacity":
             fuel_tag = f"spacecraft_{component.id}_fuel_mass"
             if dpg.does_item_exist(fuel_tag):
@@ -875,6 +1139,34 @@ class SpacecraftDesignerUI:
     def load_lunar_demo(self, sender=None, app_data=None, user_data=None):
         """Load an illustrative design that clears the lunar pre-screen."""
         self._load_reference(build_lunar_demo())
+
+    def load_demo_scenario(self, sender=None, app_data=None, user_data=None):
+        """Load a documented spacecraft and mission-input example."""
+        scenario_name = str(app_data or dpg.get_value("lunar_demo_scenario"))
+        scenario = SHOWCASE_SCENARIOS.get(scenario_name)
+        if scenario is None:
+            self._set_lunar_status(
+                "Unknown demo scenario.",
+                f"No showcase scenario is registered as {scenario_name!r}.",
+            )
+            return
+
+        preset_path = DEFAULT_PRESET.parent / scenario["preset"]
+        self._load_reference(load_spacecraft(preset_path))
+        if dpg.does_item_exist("lunar_departure_date"):
+            dpg.set_value("lunar_departure_date", scenario["departure_date"])
+        if dpg.does_item_exist("lunar_transfer_days"):
+            dpg.set_value("lunar_transfer_days", scenario["transfer_days"])
+        self._set_lunar_status(
+            f"DEMO SCENARIO READY — {scenario_name}",
+            (
+                f"{scenario['description']}\n"
+                f"Preset: {preset_path.name} · "
+                f"departure {scenario['departure_date']} · "
+                f"transfer {scenario['transfer_days']:.1f} days.\n"
+                "Select Run Lunar Mission Simulation to see the result."
+            ),
+        )
 
     def _load_reference(self, spacecraft):
         self.spacecraft = spacecraft
@@ -998,28 +1290,7 @@ class SpacecraftDesignerUI:
                 title += " (surface impact predicted)"
         else:
             title = "MISSION FAILED — propagated path missed the Moon"
-        closest = (
-            f"{result.closest_approach.to_value('km'):,.0f} km"
-            if result.closest_approach is not None
-            else "not propagated"
-        )
-        details = (
-            f"TLI required: {result.tli_delta_v.to_value('km/s'):.2f} km/s  |  "
-            f"Delta-v remaining after Earth-ascent allowance: "
-            f"{max(0.0, result.available_delta_v.to_value('km/s') - 9.4):.2f} km/s\n"
-            f"Transfer: {result.transfer_time.to_value('day'):.2f} days  |  "
-            f"Arrival: {result.arrival_time}\n"
-            f"Closest approach: {closest}  |  "
-            f"Lunar SOI: {result.lunar_sphere_of_influence.to_value('km'):,.0f} km\n"
-            f"Ephemeris: {result.data_source}\n"
-            + (
-                "Surface intersection predicted; this is not a landing simulation.\n"
-                if result.surface_impact
-                else ""
-            )
-            + ("Reasons: " + " ".join(result.reasons) if result.reasons else "")
-        )
-        self._set_lunar_status(title, details)
+        self._set_lunar_status(title, lunar_mission_report(result, self.analysis))
 
     def _invalidate_mission_result(self, sender=None, app_data=None, user_data=None):
         self._cancel_mission()
@@ -1140,6 +1411,10 @@ class SpacecraftDesignerUI:
             "spacecraft_fuel_mass": f"Fuel mass: {analysis.fuel_mass:,.1f} kg",
             "spacecraft_wet_mass": f"Wet mass: {analysis.wet_mass:,.1f} kg",
             "spacecraft_thrust": f"Thrust: {analysis.thrust / 1000:,.1f} kN",
+            "spacecraft_rcs_thrust": (
+                f"RCS thrust: {analysis.rcs_thrust_n:,.1f} N auxiliary "
+                "(excluded from main-engine performance)"
+            ),
             "spacecraft_delta_v": (
                 f"Delta-v: {analysis.delta_v:,.0f} m/s · Isp {analysis.isp:.1f} s"
             ),
@@ -1148,7 +1423,10 @@ class SpacecraftDesignerUI:
             "spacecraft_power": (
                 f"Power: {analysis.power_generation_kw:.2f} kW generation / "
                 f"{analysis.power_draw_kw:.2f} kW load · "
-                f"{analysis.power_storage_kwh:.2f} kWh storage"
+                f"{analysis.power_surplus_kw:+.2f} kW surplus · "
+                f"{analysis.power_storage_kwh:.2f} kWh storage · "
+                f"+{analysis.power_max_charge_kw:.2f}/"
+                f"-{analysis.power_max_discharge_kw:.2f} kW charge/discharge"
             ),
             "spacecraft_com": com_text,
             "spacecraft_tip_over": tip_text,

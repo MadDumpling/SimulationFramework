@@ -44,15 +44,75 @@
       }
     },
     {
-      "type": "PowerSystem",
-      "id": "lunar-demo-power",
-      "name": "Demo solar array",
-      "dry_mass": 80.0,
-      "generation_kw": 1.2,
-      "storage_kwh": 5.0,
+      "type": "LandingLeg",
+      "id": "lunar-demo-landing-gear",
+      "name": "Demo landing gear",
+      "dry_mass": 180.0,
+      "leg_count": 4,
+      "leg_length_m": 2.0,
+      "footprint_radius_m": 2.5,
+      "footpad_radius_m": 0.3,
+      "description": "Illustrative landing-leg structure; no contact simulation.",
       "provenance": {
         "quality": "illustrative",
-        "notes": "Illustrative power-system parameters."
+        "notes": "Illustrative placeholder values, not real flight hardware data."
+      }
+    },
+    {
+      "type": "RcsThruster",
+      "id": "lunar-demo-rcs",
+      "name": "Demo RCS cluster",
+      "dry_mass": 24.0,
+      "thrust_n": 450.0,
+      "isp_s": 220.0,
+      "propellant_type": "monomethylhydrazine / nitrogen tetroxide",
+      "thruster_count": 4,
+      "minimum_impulse_bit_ns": 10.0,
+      "power_draw_kw": 0.0,
+      "description": "Illustrative attitude-control thrusters; propellant use is not simulated.",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Illustrative placeholder values, not real flight hardware data."
+      }
+    },
+    {
+      "type": "SolarPanel",
+      "id": "lunar-demo-solar-panel",
+      "name": "Demo solar array",
+      "dry_mass": 45.0,
+      "area_m2": 12.0,
+      "generation_kw": 2.4,
+      "description": "Illustrative rated output; illumination and pointing are not simulated.",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Illustrative placeholder values, not real flight hardware data."
+      }
+    },
+    {
+      "type": "Battery",
+      "id": "lunar-demo-battery",
+      "name": "Demo battery",
+      "dry_mass": 35.0,
+      "capacity_kwh": 8.0,
+      "max_charge_kw": 2.0,
+      "max_discharge_kw": 3.0,
+      "description": "Illustrative electrical storage; charge state is not simulated.",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Illustrative placeholder values, not real flight hardware data."
+      }
+    },
+    {
+      "type": "Avionics",
+      "id": "lunar-demo-avionics",
+      "name": "Demo avionics",
+      "dry_mass": 18.0,
+      "power_draw_kw": 0.35,
+      "redundancy": 2,
+      "description": "Illustrative guidance, navigation, and control electronics.",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Illustrative placeholder values, not real flight hardware data."
       }
     }
   ],

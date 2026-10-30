@@ -31,7 +31,7 @@ SI is used. Original US units are kept alongside where the source used them. Con
  
 ### What was and was not opened
  
-Opened and read: S1–S5 below, plus the PDS GRGM1200A label and the NSSDC fact sheet. **Only the first ~100,000 characters of the LM Familiarization Manual (S5) were read, and its extraction missed the weight, CG, inertia and tank-capacity tables.** Several documents listed under "Pointers" were located but not opened.
+Opened and read: S1–S5 below, plus the PDS GRGM1200A label, the NSSDC fact sheet, and S13 Tables 2.1 and 2.4 for the Apollo 11 launch reference. **Only the first ~100,000 characters of the LM Familiarization Manual (S5) were read, and its extraction missed the weight, CG, inertia and tank-capacity tables.** Several documents listed under "Pointers" were located but not opened.
  
 ---
  
@@ -165,15 +165,26 @@ The S3 figure labels a primary-strut load of 42,256 N (9,500 lb), consistent wit
  
 ## 2. Phase 2: Earth departure and lunar transfer
  
-The LM did not fly this phase, and no Apollo launch vehicle dataset was retrieved. Apollo 11 timeline anchors are included so a reference case exists.
+The LM did not fly this phase. NASA-CR-61291, an AS-506 post-launch operational-trajectory report, has now been retrieved and read for launch, staging, parking-orbit, and TLI summary anchors. It supports a fixed historical reference profile, not a validated predictive Saturn V model: the event table calls its sequence predicted, and complete stage mass/propellant/thrust maps, aerodynamic coefficients, and guidance laws remain unavailable here.
  
 ### 2.1 Apollo 11 launch and transfer anchors
  
 | Event | Value | Source | Tag |
 | --- | --- | --- | --- |
-| Liftoff | 16 July 1969, 13:32:00 UTC, Launch Complex 39A | S11 | `published-secondary` |
-| S-IC burnout and separation | T+2 min 42.30 s (13:34:42.30 UTC); 4,700,000 lb (2,131,884 kg) propellant burned | S11 | `published-secondary` |
-| Earth orbit insertion | GET 00:11:50; listed velocity 25,567 ft/s (7,793 m/s); 100 nmi (185.2 km) circular parking orbit | S11 (press-kit table; column label not visible, value consistent with orbital velocity) | `published-secondary` |
+| Liftoff | 16 July 1969, 13:32:00.5 UTC, Launch Complex 39A; time derived from the S13 guidance-reference-release time and first-motion offset | S13, Table 2.1 | `derived` |
+| Launch-site coordinates | 28.608422° N, 279.395867° E; launch azimuth 72.063° | S13, Table 2.4 | `published` |
+| Maximum dynamic pressure | 34,725.243 Pa at T+81.00 s | S13, Table 2.4 | `published` |
+| S-IC outboard-engine cutoff | T+160.819 s; altitude 66,731 m; inertial speed 2,755.6109 m/s | S13, Table 2.4 | `published` |
+| S-IC/S-II separation | Structure completely severed at T+161.6 s in the predicted sequence | S13, Table 2.1 | `published` |
+| S-II engine cutoff | T+551.384 s; altitude 187,986 m; inertial speed 6,938.8816 m/s | S13, Table 2.4 | `published` |
+| S-II/S-IVB separation | Structure completely severed at T+552.3 s in the predicted sequence | S13, Table 2.1 | `published` |
+| S-IVB first-burn guidance cutoff | T+699.22793 s | S13, Table 2.4 | `published` |
+| S-IVB first-burn cutoff state | Altitude 191,339.56 m; inertial speed 7,791.4071 m/s; flight-path angle 90.002205° | S13, Table 2.4 | `published` |
+| Parking-orbit insertion | Geocentric radius 6,563,308.7 m; inertial speed 7,793.1014 m/s; inclination 32.531447°; eccentricity 0.0010449; period 5,284.3769 s | S13, Table 2.4 | `published` |
+| S-IVB second-burn 90% thrust | T+9,857.50 s | S13, Table 2.4 | `published` |
+| TLI second-burn guidance cutoff | T+10,203.801 s; geocentric radius 6,714,982.9 m; inertial speed 10,831.069 m/s; flight-path angle 82.588522°; eccentricity 0.97667179 | S13, Table 2.4 | `published` |
+| S-IC burnout and separation | T+2 min 42.30 s (13:34:42.30 UTC); 4,700,000 lb (2,131,884 kg) propellant burned; timing differs from S13's nominal/predicted separation event | S11 | `published-secondary` |
+| Earth orbit insertion | GET 00:11:50; listed velocity 25,567 ft/s (7,793 m/s); 100 nmi (185.2 km) circular parking orbit; the press-kit event time differs from S13's GCS1/EPOI times near T+699 s, so do not equate the event definitions without further source review | S11 (press-kit table; column label not visible, value consistent with orbital velocity) | `published-secondary` |
 | Translunar injection (S-IVB re-ignition) | GET 02:44:15 to 02:44:16.2; 16:16:16 UTC; after about 1.5 parking orbits | S11 | `published-secondary` |
 | TLI burn ΔV | 9,965 ft/s (3,037 m/s) listed against the TLI event | S11 (column label unclear) | `published-secondary` |
 | Translunar trajectory type | Free-return, 60 nmi (111.1 km) pericynthion | S11 | `published-secondary` |
@@ -184,9 +195,9 @@ The LM did not fly this phase, and no Apollo launch vehicle dataset was retrieve
  
 | Item | Status | Where to look |
 | --- | --- | --- |
-| Saturn V stage masses, propellant loads, thrust, Isp, burn times (S-IC, S-II, S-IVB) | `unknown` | Boeing D5-15481 (AS-504 reference trajectory); Apollo 11 Mission Operation Report M-932-69-11 |
-| Actual Apollo 11 launch azimuth and parking-orbit inclination | `unknown`. The AS-504 reference trajectory tabulates azimuths from 72° to 108° across a launch window; the Apollo 11 value was not retrieved | Apollo 11 Mission Report; AS-506 postflight trajectory (not found) |
-| TLI burn duration, targeting parameters, S-IVB residuals | `unknown` | NTRS 19700025320 (Hyle, *Translunar Injection Maneuver*, located, not opened) |
+| Saturn V stage masses, propellant loads, thrust/Isp maps, residuals | `unknown`; the event profile does not provide the full vehicle performance model required to predict alternate designs | Boeing D5-15481 (AS-504 reference trajectory); Apollo 11 Mission Operation Report M-932-69-11 |
+| Apollo 11 launch azimuth and parking-orbit inclination | `published` for the operational reference profile: 72.063° and 32.531447° | S13, Table 2.4 |
+| TLI endpoint and burn timing | `published` for the operational reference profile; start-to-cutoff thrust history, propellant flow, and targeting laws remain `unknown` | S13, Tables 2.1 and 2.4; NTRS 19700025320 (Hyle, *Translunar Injection Maneuver*) |
 | Atmosphere, wind, aerodynamic coefficients, gravity-loss data | `unknown`. Not researched this session | |
 | Earth-fixed frame and rotation model | Handled by SPICE kernels, not vehicle data | NAIF (roadmap link) |
 | Dispersions: launch timing, thrust, mass, navigation, maneuver errors | `unknown` for Apollo; keep any placeholders `illustrative` | |
@@ -420,7 +431,7 @@ Software version; SPICE kernel names and dates; gravity model (e.g., GRGM1200A, 
 | G9 | Inertia and CG at intermediate propellant states | Phase 4 | Weight-and-balance data; compute from tank and structure masses |
 | G10 | Numeric design velocity envelope polygon | Phase 4 | S3 Fig. 6 and 8 (read from scan); Rogers TN D-6850 |
 | G11 | Vehicle height, width, engine skirt clearance, footpad span as built | Phase 1 | LM Familiarization Manual Fig. 2-2; Rogers TN D-6850 |
-| G12 | Saturn V stage data, Apollo 11 launch azimuth, parking-orbit inclination, TLI burn data | Phase 2 | Boeing D5-15481; M-932-69-11; NTRS 19700025320 |
+| G12 | Saturn V stage masses/engine maps remain unknown; Apollo 11 launch azimuth, orbit summary, staging times, and TLI endpoint now have operational-reference anchors | Phase 2 | S13; Boeing D5-15481; M-932-69-11; NTRS 19700025320 |
 | G13 | Atmosphere, winds, aerodynamics, gravity losses | Phase 2 | Not researched this session |
 | G14 | Landing ellipse and target region definition | Phase 3, outcome "missed site" | Apollo 11 Mission Report; LROC |
 | G15 | Meter-scale terrain and hazards at Tranquility Base | Phase 3, 4 | LROC NAC DTMs |
@@ -448,6 +459,7 @@ Software version; SPICE kernel names and dates; gravity model (e.g., GRGM1200A, 
 - **S10** [NASA NSSDC Moon Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html)
 - **S11** Apollo 11 launch and TLI anchors: [Apollo 11 press kit copy](https://www.scribd.com/document/596513412/a11-Press-Kit1); [Apollo Flight Journal, Earth orbit and TLI](https://www.nasa.gov/history/afj/ap11fj/02earth-orbit-tli.html); [This Day in Aviation timeline](https://www.thisdayinaviation.com/page/354/?lang=ar) (secondary)
 - **S12** [Descent propulsion system (Wikipedia)](https://en.wikipedia.org/wiki/Descent_propulsion_system) (secondary)
+- **S13** Bradford et al. *AS-506 "G" Manned Lunar Landing Mission Post-Launch Operational Trajectory for July 16, 1969*, NASA CR-61291. [NTRS record and PDF](https://ntrs.nasa.gov/api/citations/19690026499)
 ### Pointers: located, not opened
  
 - NASA TN D-6850, Rogers, *Apollo Experience Report: Lunar Module Landing Gear Subsystem*
