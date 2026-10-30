@@ -1,39 +1,92 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
+
 name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - hackathon
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+      - hackathon
 
 permissions:
   contents: read
 
 jobs:
   build:
-
+    name: Test Spacecraft Simulation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "1"
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest
+      # Step 1: Download the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python 3.11
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # Step 3: Install OpenGL and virtual display
+      - name: Install graphics dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            xauth \
+            mesa-utils \
+            libgl1 \
+            libgl1-mesa-dri \
+            libglx-mesa0 \
+            libx11-6
+
+      # Step 4: Install Python packages
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install flake8
+
+      # Step 5: Check Python syntax and errors
+      - name: Check Python code
+        run: |
+          flake8 . \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
+
+      # Step 6: Show additional code warnings
+      - name: Check code style
+        run: |
+          flake8 . \
+            --count \
+            --exit-zero \
+            --max-complexity=10 \
+            --max-line-length=127 \
+            --statistics
+
+      # Step 7: Check the virtual OpenGL display
+      - name: Verify OpenGL environment
+        run: |
+          xvfb-run -a \
+            -s "-screen 0 1280x1024x24" \
+            glxinfo -B
+
+      # Step 8: Run all Python tests
+      - name: Run tests with virtual display
+        run: |
+          xvfb-run -a \
+            -s "-screen 0 1280x1024x24" \
+            python -m pytest -q

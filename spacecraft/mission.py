@@ -55,6 +55,14 @@ class MissionSimulationResult:
     assumptions: tuple[str, ...]
 
 
+# Earth-ascent allowance and a typical trans-lunar injection delta-v, shared with the UI
+# so the pre-screen readout matches what the simulation checks. The transfer figure is
+# approximate (3.13-3.18 km/s over 3-8 day transfers for the phase-aligned departure
+# assumed here); the simulation computes the exact value per run.
+EARTH_ASCENT_DELTA_V = 9_400.0
+TYPICAL_TLI_DELTA_V = 3_200.0
+
+
 def lambert_universal(
     initial_position: np.ndarray,
     final_position: np.ndarray,
@@ -228,7 +236,7 @@ def run_lunar_flyby_simulation(
     analysis = analyze_spacecraft(spacecraft)
     total_vehicle_delta_v = _ideal_tli_delta_v(spacecraft, analysis)
     orbit_radius = (R_earth + PARKING_ORBIT_ALTITUDE).to_value(u.m)
-    required_ascent = 9_400.0
+    required_ascent = EARTH_ASCENT_DELTA_V
     available_tli = total_vehicle_delta_v - required_ascent
     arrival = departure + TimeDelta(flight_seconds, format="sec")
     reasons = []

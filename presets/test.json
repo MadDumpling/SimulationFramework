@@ -1,9 +1,0 @@
-{
-    "simulation": "Bouncing Balls",
-    "version": "0.3",
-    "parameters": {
-        "gravity": 12.809000015258789,
-        "damping": 0.9,
-        "radius": 0.01
-    }
-}
