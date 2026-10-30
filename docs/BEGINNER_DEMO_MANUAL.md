@@ -102,8 +102,6 @@ Mission results should be interpreted as engineering-screening outcomes rather t
 
 ---
 
-## Suggested Demo Narrative
-
 ### Problem
 
 Spacecraft design, mission planning, and engineering analysis are typically performed using separate tools. This makes it difficult to understand how design choices affect mission feasibility.
