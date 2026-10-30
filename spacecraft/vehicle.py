@@ -91,3 +91,15 @@ class Spacecraft:
             (part for part in self.components if part.id == component_id),
             None,
         )
+
+    def mass_properties(self, include_propellant: bool = True):
+        """Return aggregate vehicle mass properties in vehicle coordinates."""
+        from .mass_properties import mass_properties
+
+        return mass_properties(self, include_propellant=include_propellant)
+
+    def tip_over_angle_deg(self) -> float | None:
+        """Return static tip-over limit when COM and landing gear data are known."""
+        from .mass_properties import static_tip_over_angle_deg
+
+        return static_tip_over_angle_deg(self)

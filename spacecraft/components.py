@@ -17,6 +17,7 @@ from .propulsion import (
     ThrottleSpec,
 )
 from .provenance import DataProvenance, MissingDataError
+from .placement import Placement
 
 
 def _require_nonnegative(field_name: str, value: float) -> None:
@@ -61,6 +62,8 @@ class Component:
     inertia_kgm2: tuple[float, float, float] | None = None
     # Envelope as (length along +Y, diameter), metres.
     dimensions_m: tuple[float, float] | None = None
+    # Optional attachment transform. None preserves legacy automatic stacking.
+    placement: Placement | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -208,6 +211,7 @@ _NESTED_TYPES = {
     "throttle": ThrottleSpec,
     "ignition": IgnitionLimits,
     "gimbal": Gimbal,
+    "placement": Placement,
 }
 
 _ILLUSTRATIVE_NOTE = (
