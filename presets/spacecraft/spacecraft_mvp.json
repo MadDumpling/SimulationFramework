@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "Chemical Explorer Concept",
+  "components": [
+    {
+      "type": "Engine",
+      "name": "Demo kerolox engine",
+      "dry_mass": 500.0,
+      "id": "demo-engine-01",
+      "description": "Illustrative sea-level chemical engine parameters.",
+      "thrust": 845000.0,
+      "isp": 300.0,
+      "fuel_type": "LOX/RP-1",
+      "power_draw_kw": 0.0
+    },
+    {
+      "type": "FuelTank",
+      "name": "Demo LOX/RP-1 tank",
+      "dry_mass": 2500.0,
+      "id": "demo-tank-01",
+      "description": "Illustrative tank; fuel mass is user-configurable.",
+      "capacity": 40000.0,
+      "fuel_mass": 30000.0,
+      "fuel_type": "LOX/RP-1"
+    },
+    {
+      "type": "Payload",
+      "name": "Demo payload",
+      "dry_mass": 1000.0,
+      "id": "demo-payload-01",
+      "description": "Illustrative payload mass."
+    },
+    {
+      "type": "PowerSystem",
+      "name": "Demo solar array",
+      "dry_mass": 80.0,
+      "id": "demo-power-01",
+      "description": "Illustrative power-system parameters.",
+      "generation_kw": 1.2,
+      "storage_kwh": 5.0
+    }
+  ]
+}
