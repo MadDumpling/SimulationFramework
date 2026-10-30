@@ -5,6 +5,15 @@ import time
 from core import EventBus
 from core.performance import PerformanceMonitor
 from rendering import OpenGLRenderer
+from spacecraft.components import (
+    Avionics,
+    Battery,
+    Engine,
+    FuelTank,
+    LandingLeg,
+    RcsThruster,
+    SolarPanel,
+)
 from viewport import SpacecraftViewport
 from viewport import flight
 
@@ -67,6 +76,7 @@ class DesignerApplication:
             self.viewport.selected_id = None
         self._reset_flight()  # editing the design returns the vehicle to the pad
         self.viewport.invalidate()
+        self._refresh_component_overlay()
 
     def _reset_flight(self):
         self._held_banner = None
@@ -127,6 +137,65 @@ class DesignerApplication:
 
     def _on_component_selected(self, component_id):
         self.viewport.selected_id = component_id
+        self._refresh_component_overlay()
+
+    def _refresh_component_overlay(self):
+        component = self.designer.spacecraft.get_component(self.viewport.selected_id)
+        if component is None:
+            title = "No component selected"
+            details = "Select a part to inspect its mass and modeled hardware ratings."
+        else:
+            title = component.name
+            lines = [f"Dry mass: {component.dry_mass:,.1f} kg"]
+            if isinstance(component, Engine):
+                lines.extend(
+                    (
+                        f"Main-engine thrust: {component.thrust:,.1f} N",
+                        f"Specific impulse: {component.isp:,.1f} s",
+                        f"Propellant: {component.fuel_type}",
+                    )
+                )
+            elif isinstance(component, FuelTank):
+                lines.extend(
+                    (
+                        f"Loaded propellant: {component.fuel_mass:,.1f} / "
+                        f"{component.capacity:,.1f} kg",
+                        f"Propellant: {component.fuel_type}",
+                    )
+                )
+            elif isinstance(component, LandingLeg):
+                lines.append(
+                    f"Landing legs: {component.leg_count} · "
+                    f"footprint radius: {component.footprint_radius_m:.2f} m"
+                )
+            elif isinstance(component, RcsThruster):
+                lines.append(
+                    f"RCS: {component.thruster_count} × "
+                    f"{component.thrust_n:,.1f} N · Isp {component.isp_s:.1f} s"
+                )
+            elif isinstance(component, SolarPanel):
+                lines.append(
+                    f"Solar array: {component.area_m2:.2f} m² · "
+                    f"{component.generation_kw:.2f} kW rated"
+                )
+            elif isinstance(component, Battery):
+                lines.append(
+                    f"Battery: {component.capacity_kwh:.2f} kWh · "
+                    f"charge {component.max_charge_kw:.2f} kW / "
+                    f"discharge {component.max_discharge_kw:.2f} kW"
+                )
+            elif isinstance(component, Avionics):
+                lines.append(
+                    f"Avionics load: {component.power_draw_kw:.2f} kW · "
+                    f"redundancy {component.redundancy}"
+                )
+            details = "  |  ".join(lines)
+        for tag, value in (
+            ("viewport_component_title", title),
+            ("viewport_component_details", details),
+        ):
+            if dpg.does_item_exist(tag):
+                dpg.set_value(tag, value)
 
     def _on_explode(self, amount):
         self.viewport.explode = amount

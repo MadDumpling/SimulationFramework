@@ -122,6 +122,13 @@ real clearances or structural dimensions.
 5. Point out **Lunar mission check** and **Vehicle data readiness**. The first
    shows whether the example clears the initial screening gates; the second
    reminds the audience whether the inputs are complete and traceable.
+6. Point to **Mission Screening Verdict** and the configuration screening bar.
+   The score counts five displayed checks equally: liftoff, ideal delta-v,
+   positive declared power margin, known center of mass, and traceable
+   definition data. It is explicitly not a flight-readiness percentage.
+7. Point to **Vehicle Health** for a compact delta-v, TWR, power-margin, and
+   stability snapshot. “Unknown” stability means the required data is not
+   present; it does not mean stable.
 
 These are screening estimates. In particular, a bar that reaches a budget
 does not prove a real mission is feasible: the model omits important real
@@ -185,6 +192,18 @@ Select a part to inspect it. Depending on the component, the inspector allows
 you to edit its name, dry mass, hardware-specific fields, stage, data quality,
 source, center-of-mass inputs, and placement. Invalid values are rejected and
 the previous valid value is restored.
+
+The **Vehicle Architecture** card summarizes component assemblies, installed
+cluster counts (for example, individual RCS thrusters and landing legs), stage
+numbers, and the selected mission target. When a component is selected, the
+viewport header also shows its name, mass, and relevant hardware ratings.
+
+After editing a numeric component property, the inspector's **Change Impact**
+readout compares the modeled vehicle metrics with their values before that
+edit. It reports changes such as mass, main/RCS thrust, ideal delta-v, TWR, and
+power margin. It is an immediate before/after comparison, not a prediction of
+the whole mission. A placement-only change may correctly show no change to
+these mass/performance numbers.
 
 #### Placement controls
 
@@ -250,6 +269,10 @@ as the total load you want the summary to represent.
 
 The **Mission** tab contains two different references and a trajectory screen:
 
+- **Earth → Moon · Apollo 11 launch-site reference** shows Kennedy Space
+  Center's LC-39A coordinates from the historical reference. This is
+  presentation context only: the current transfer calculation does not use a
+  launch site or simulate a surface launch.
 - **Apollo 11 historical reference · AS-506** is a fixed, source-backed
   historical profile. Expand it to see the report. It is not connected to the
   currently edited vehicle and is not a Saturn V simulation.
@@ -263,6 +286,13 @@ The **Mission** tab contains two different references and a trajectory screen:
 - **Run Lunar Mission Simulation** runs the lunar trajectory screen.
 - **Status**, **details**, and **Mission timeline** show the run stage and
   outcome.
+- **Mission Status · Model Milestones** presents launch, Earth orbit, TLI,
+  arrival, and landing as high-level status labels. “Screened” launch/orbit/TLI
+  steps represent assumptions and budget checks; they are not simulated
+  launch events. A lunar arrival never marks safe landing as passed.
+- **Failure guidance** summarizes a suggested next check. Use the complete
+  failure reasons and vehicle warnings in the report to understand the result;
+  guidance is a starting point, not an automatic design fix.
 
 Changing the spacecraft or mission inputs invalidates a previous result. Run
 the mission again after making changes.

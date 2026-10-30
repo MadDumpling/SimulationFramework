@@ -1,6 +1,7 @@
 """DearPyGui spacecraft configurator panel for the 3D OpenGL viewport."""
 
 import threading
+from collections import Counter
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,7 @@ from spacecraft.analysis import (
     analyze_spacecraft,
     assess_mission,
 )
+from spacecraft.apollo11_reference import APOLLO_11_REFERENCE
 from spacecraft.apollo_lm import PRESET_PATH as APOLLO_LM_PRESET
 from spacecraft.components import (
     Avionics,
@@ -165,6 +167,13 @@ class SpacecraftDesignerUI:
 
             with dpg.tab_bar(tag="designer_tabs"):
                 with dpg.tab(label="Design"):
+                    dpg.add_text("VEHICLE ARCHITECTURE", bullet=True)
+                    dpg.add_text(
+                        "",
+                        tag="spacecraft_architecture_summary",
+                        wrap=460,
+                    )
+                    dpg.add_separator()
                     dpg.add_text("Add component")
                     with dpg.group(horizontal=True):
                         for label, catalog_id in (
@@ -237,7 +246,50 @@ class SpacecraftDesignerUI:
                     )
 
                 with dpg.tab(label="Analysis"):
-                    dpg.add_text("Vehicle performance", bullet=True)
+                    dpg.add_text("MISSION SCREENING VERDICT", bullet=True)
+                    dpg.add_text(
+                        "",
+                        tag="spacecraft_model_verdict",
+                        wrap=460,
+                        color=(255, 190, 80),
+                    )
+                    dpg.add_text(
+                        "",
+                        tag="spacecraft_readiness_score",
+                        wrap=460,
+                        color=(175, 190, 210),
+                    )
+                    dpg.add_progress_bar(
+                        default_value=0.0,
+                        width=440,
+                        tag="spacecraft_readiness_bar",
+                    )
+                    for check_key in (
+                        "launch",
+                        "delta_v",
+                        "power",
+                        "com",
+                        "traceability",
+                    ):
+                        dpg.add_text(
+                            "",
+                            tag=f"spacecraft_readiness_{check_key}",
+                        )
+                    dpg.add_text(
+                        "",
+                        tag="spacecraft_model_recommendation",
+                        wrap=460,
+                        color=(255, 190, 80),
+                    )
+                    dpg.add_separator()
+                    dpg.add_text("VEHICLE HEALTH", bullet=True)
+                    with dpg.group(horizontal=True):
+                        dpg.add_text("", tag="health_delta_v")
+                        dpg.add_text("", tag="health_twr")
+                    with dpg.group(horizontal=True):
+                        dpg.add_text("", tag="health_power")
+                        dpg.add_text("", tag="health_stability")
+                    dpg.add_text("Detailed performance values", bullet=True)
                     for label, tag in (
                         ("Dry mass: 0 kg", "spacecraft_dry_mass"),
                         ("Fuel mass: 0 kg", "spacecraft_fuel_mass"),
@@ -313,6 +365,23 @@ class SpacecraftDesignerUI:
                 with dpg.tab(label="Mission"):
                     dpg.add_text("Lunar mission screening · JPL DE440s", bullet=True)
                     dpg.add_text(
+                        "EARTH → MOON · APOLLO 11 LAUNCH-SITE REFERENCE",
+                        tag="mission_route_overview",
+                        color=(120, 195, 255),
+                    )
+                    dpg.add_text(
+                        (
+                            f"{APOLLO_11_REFERENCE.launch_site} · "
+                            f"{APOLLO_11_REFERENCE.launch_latitude_deg:.4f}° N, "
+                            f"{360.0 - APOLLO_11_REFERENCE.launch_longitude_east_deg:.4f}° W\n"
+                            "Historical Apollo 11 reference only; launch site is "
+                            "not used by the current transfer calculation."
+                        ),
+                        tag="mission_launch_site",
+                        wrap=460,
+                        color=(175, 190, 210),
+                    )
+                    dpg.add_text(
                         apollo11_reference_summary(),
                         color=(175, 190, 210),
                         tag="apollo11_reference_summary",
@@ -379,6 +448,20 @@ class SpacecraftDesignerUI:
                         wrap=460,
                         color=(175, 190, 210),
                     )
+                    dpg.add_text("MISSION STATUS · MODEL MILESTONES", bullet=True)
+                    with dpg.group(horizontal=True):
+                        for label, key in (
+                            ("Launch", "launch"),
+                            ("Earth orbit", "earth_orbit"),
+                            ("TLI", "tli"),
+                            ("Arrival", "arrival"),
+                            ("Landing", "touchdown"),
+                        ):
+                            dpg.add_text(
+                                f"{label}: READY",
+                                tag=f"mission_stage_{key}",
+                                color=(150, 165, 185),
+                            )
                     dpg.add_text(
                         "READY",
                         tag="lunar_reachability_status",
@@ -389,6 +472,12 @@ class SpacecraftDesignerUI:
                         tag="lunar_reachability_details",
                         wrap=460,
                         color=(195, 205, 220),
+                    )
+                    dpg.add_text(
+                        "",
+                        tag="lunar_failure_guidance",
+                        wrap=460,
+                        color=(255, 190, 80),
                     )
                     dpg.add_separator()
                     dpg.add_text("Mission timeline", bullet=True)
@@ -516,6 +605,18 @@ class SpacecraftDesignerUI:
                 component.name,
                 parent="spacecraft_component_inspector",
                 color=self.SELECTED_COLOR,
+            )
+            dpg.add_text(
+                "CHANGE IMPACT · relative to the previous edit",
+                parent="spacecraft_component_inspector",
+                color=(120, 195, 255),
+            )
+            dpg.add_text(
+                "Edit a numeric property to see its immediate effect on modeled metrics.",
+                parent="spacecraft_component_inspector",
+                tag="spacecraft_design_impact",
+                wrap=450,
+                color=(175, 190, 210),
             )
             dpg.add_input_text(
                 label="Component name",
@@ -1004,9 +1105,38 @@ class SpacecraftDesignerUI:
         self._rebuild_component_controls()
 
     def _placement_changed(self):
+        previous_analysis = self.analysis
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._invalidate_mission_result()
         self.refresh()
+        self._show_design_impact(previous_analysis, self.analysis)
+
+    @staticmethod
+    def _design_impact_text(before, after):
+        metrics = (
+            ("Dry mass", before.dry_mass, after.dry_mass, "kg"),
+            ("Wet mass", before.wet_mass, after.wet_mass, "kg"),
+            ("Main thrust", before.thrust, after.thrust, "N"),
+            ("Auxiliary RCS thrust", before.rcs_thrust_n, after.rcs_thrust_n, "N"),
+            ("Ideal delta-v", before.delta_v, after.delta_v, "m/s"),
+            ("TWR", before.twr, after.twr, ""),
+            ("Power surplus", before.power_surplus_kw, after.power_surplus_kw, "kW"),
+            ("Battery/storage rating", before.power_storage_kwh, after.power_storage_kwh, "kWh"),
+        )
+        changes = [
+            f"{label}: {delta:+,.2f} {unit}".rstrip()
+            for label, old, new, unit in metrics
+            if abs(delta := new - old) > 1e-9
+        ]
+        if not changes:
+            return "No modeled mass, propulsion, or power metric changed."
+        return "Since the previous edit:\n" + "\n".join(changes)
+
+    @staticmethod
+    def _show_design_impact(before, after):
+        tag = "spacecraft_design_impact"
+        if dpg.does_item_exist(tag):
+            dpg.set_value(tag, SpacecraftDesignerUI._design_impact_text(before, after))
 
     def set_stage(self, sender, app_data, user_data):
         component = self.spacecraft.get_component(user_data)
@@ -1050,6 +1180,7 @@ class SpacecraftDesignerUI:
         component = self.spacecraft.get_component(component_id)
         if component is None:
             return
+        previous_analysis = self.analysis
         if isinstance(component, Engine) and field_name in (
             "throttle_min_fraction",
             "throttle_max_fraction",
@@ -1096,6 +1227,7 @@ class SpacecraftDesignerUI:
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._invalidate_mission_result()
         self.refresh()
+        self._show_design_impact(previous_analysis, self.analysis)
 
     def _rename_spacecraft(self, sender, app_data, user_data):
         name = str(app_data).strip()
@@ -1195,6 +1327,8 @@ class SpacecraftDesignerUI:
         if self._mission_run is not None and self._mission_run.serial == self._mission_serial:
             return  # a run is already in progress
         self.mission_result = None  # a rerun starts clean; no stale result lingers
+        if dpg.does_item_exist("lunar_failure_guidance"):
+            dpg.set_value("lunar_failure_guidance", "")
         self._set_lunar_status(
             "Mission simulation running…",
             "Downloading/reading JPL ephemeris and integrating the trajectory.",
@@ -1275,6 +1409,12 @@ class SpacecraftDesignerUI:
                 "Simulation could not run.",
                 f"{error}\nCheck the date, network, and JPL DE440s access.",
             )
+            if dpg.does_item_exist("lunar_failure_guidance"):
+                dpg.set_value(
+                    "lunar_failure_guidance",
+                    "This is a simulation/data error, not evidence that the "
+                    "spacecraft failed. Check the date and ephemeris access.",
+                )
             self.events.publish("mission.failed", error)
             return
         self.mission_result = result
@@ -1291,9 +1431,17 @@ class SpacecraftDesignerUI:
         else:
             title = "MISSION FAILED — propagated path missed the Moon"
         self._set_lunar_status(title, lunar_mission_report(result, self.analysis))
+        if dpg.does_item_exist("lunar_failure_guidance"):
+            dpg.set_value(
+                "lunar_failure_guidance",
+                self._mission_recommendation(result, self.analysis),
+            )
+        self.refresh()
 
     def _invalidate_mission_result(self, sender=None, app_data=None, user_data=None):
         self._cancel_mission()
+        if dpg.does_item_exist("lunar_failure_guidance"):
+            dpg.set_value("lunar_failure_guidance", "")
         if self.mission_result is not None:
             self.mission_result = None
             self._set_lunar_status(
@@ -1321,10 +1469,21 @@ class SpacecraftDesignerUI:
             "REACHED": (100, 220, 150),
             "FAILED": (255, 105, 90),
         }
-        for milestone in mission_timeline(
+        milestones = mission_timeline(
             self.mission_result,
             running=running or self.mission_running,
-        ):
+        )
+        for milestone in milestones:
+            stage_tag = f"mission_stage_{milestone.key}"
+            if dpg.does_item_exist(stage_tag):
+                dpg.set_value(
+                    stage_tag,
+                    f"{milestone.label}: {milestone.state}",
+                )
+                dpg.configure_item(
+                    stage_tag,
+                    color=colors.get(milestone.state, (175, 190, 210)),
+                )
             dpg.add_text(
                 f"{milestone.state:>10}   {milestone.label}"
                 + (f" — {milestone.reason}" if milestone.reason else ""),
@@ -1379,6 +1538,162 @@ class SpacecraftDesignerUI:
                 ),
             )
 
+    def _architecture_summary(self) -> str:
+        counts = Counter(type(component) for component in self.spacecraft.components)
+        stages = sorted({component.stage for component in self.spacecraft.components})
+        engines = counts[Engine]
+        tanks = counts[FuelTank]
+        rcs_units = sum(
+            component.thruster_count
+            for component in self.spacecraft.components
+            if isinstance(component, RcsThruster)
+        )
+        landing_legs = sum(
+            component.leg_count
+            for component in self.spacecraft.components
+            if isinstance(component, LandingLeg)
+        )
+        return (
+            f"Components: {len(self.spacecraft.components)} · "
+            f"stages: {len(stages)}"
+            + (f" (IDs {', '.join(map(str, stages))})" if stages else "")
+            + "\n"
+            f"Engines: {engines} · fuel tanks: {tanks} · "
+            f"RCS thrusters: {rcs_units}\n"
+            f"Solar arrays: {counts[SolarPanel]} · batteries: {counts[Battery]} · "
+            f"avionics: {counts[Avionics]} · landing legs: {landing_legs}\n"
+            f"Mission target: {MISSION_PROFILES[self.mission_id].name}"
+        )
+
+    def _readiness_panel(self, analysis, properties, definition):
+        check = lunar_prescreen(analysis)
+        power_ok = (
+            analysis.power_generation_kw > 0.0
+            and analysis.power_surplus_kw > 0.0
+        )
+        com_known = properties.com_m is not None
+        data_traceable = definition.high_confidence
+        checks = (
+            ("Launch capability", check.liftoff_ok),
+            ("Ideal delta-v budget", check.delta_v_ok),
+            ("Declared power margin", power_ok),
+            ("Center-of-mass data", com_known),
+            ("Traceable definition data", data_traceable),
+        )
+        passed = sum(is_pass for _, is_pass in checks)
+        score = passed / len(checks)
+
+        if self.mission_result is not None:
+            result = self.mission_result
+            if result.simulated and result.success:
+                if result.surface_impact:
+                    verdict = (
+                        "LUNAR SOI ENTRY — MEAN-SURFACE IMPACT PREDICTED; "
+                        "safe landing is not simulated."
+                    )
+                    verdict_color = (255, 190, 80)
+                else:
+                    verdict = (
+                        "LUNAR ENCOUNTER SCREEN PASSED — safe landing is not simulated."
+                    )
+                    verdict_color = (100, 220, 150)
+            elif result.simulated:
+                verdict = "TRANSFER SCREEN FAILED — propagated path missed the lunar SOI."
+                verdict_color = (255, 105, 90)
+            else:
+                reason = result.reasons[0] if result.reasons else "Vehicle pre-check failed."
+                verdict = f"NOT READY — {reason}"
+                verdict_color = (255, 105, 90)
+        elif check.ready:
+            verdict = "INITIAL LUNAR SCREEN PASSED — trajectory has not been tested."
+            verdict_color = (100, 220, 150)
+        else:
+            verdict = f"NOT READY — {check.summary}"
+            verdict_color = (255, 105, 90)
+
+        check_rows = (
+            ("launch", "Launch capability", check.liftoff_ok),
+            ("delta_v", "Ideal delta-v budget", check.delta_v_ok),
+            ("power", "Declared power margin", power_ok),
+            ("com", "Center-of-mass data", com_known),
+            ("traceability", "Traceable definition data", data_traceable),
+        )
+        score_text = (
+            f"Configuration screening: {passed}/{len(checks)} checks "
+            f"({score:.0%}). Not flight readiness or landing certification."
+        )
+        if self.mission_result is not None and not self.mission_result.success:
+            recommendation = self._mission_recommendation(self.mission_result, analysis)
+        elif self.mission_result is not None and self.mission_result.success:
+            if self.mission_result.surface_impact:
+                recommendation = (
+                    "The modeled path intersects the Moon's mean-radius sphere. "
+                    "Review the encounter geometry; this is an impact estimate, "
+                    "not a landing simulation."
+                )
+            else:
+                recommendation = (
+                    "The path reached the lunar SOI. Capture, descent, and safe "
+                    "touchdown are not simulated."
+                )
+        elif not check.ready:
+            recommendation = check.hint
+        elif not power_ok:
+            recommendation = (
+                "Check declared electrical loads and installed generation; "
+                "the power margin is not positive."
+            )
+        else:
+            recommendation = (
+                "Run the date-specific lunar trajectory screen; this score does "
+                "not check encounter geometry."
+            )
+        return verdict, verdict_color, score_text, score, check_rows, recommendation
+
+    @staticmethod
+    def _mission_recommendation(result, analysis):
+        if analysis.thrust <= 0.0 or analysis.twr <= 1.0:
+            return (
+                "Suggested next step: add main-engine thrust or reduce loaded "
+                "vehicle mass until TWR is above 1.0."
+            )
+        if analysis.fuel_mass <= 0.0:
+            return (
+                "Suggested next step: load propellant compatible with the "
+                "installed engine and check tank fuel types."
+            )
+        if analysis.delta_v < result.required_earth_departure_delta_v.to_value("m/s"):
+            return (
+                "Suggested next step: increase usable compatible propellant or "
+                "engine efficiency, while preserving liftoff thrust margin."
+            )
+        if not result.simulated:
+            return (
+                "Suggested next step: inspect the failure reasons and vehicle "
+                "warnings below; resolve the failed pre-check before rerunning."
+            )
+        if result.simulated and not result.success:
+            return (
+                "Suggested next step: review departure date and transfer time; "
+                "the modeled encounter geometry missed the lunar SOI. This model "
+                "does not optimize launch windows or correction burns."
+            )
+        if result.success and result.surface_impact:
+            return (
+                "The modeled path intersects the Moon's mean-radius sphere. "
+                "Review the encounter geometry; this is an impact estimate, "
+                "not a landing simulation."
+            )
+        return (
+            "The path reached the lunar SOI. Safe landing is not simulated; "
+            "do not treat this as a landing success."
+        )
+
+    @staticmethod
+    def _set_item_color(tag, color):
+        if dpg.does_item_exist(tag):
+            dpg.configure_item(tag, color=color)
+
     def refresh(self):
         self.analysis = analyze_spacecraft(self.spacecraft)
         if not self.built:
@@ -1386,6 +1701,15 @@ class SpacecraftDesignerUI:
         analysis = self.analysis
         mission = assess_mission(analysis, MISSION_PROFILES[self.mission_id])
         properties = mass_properties(self.spacecraft)
+        definition = assess_definition(self.spacecraft)
+        (
+            verdict,
+            verdict_color,
+            score_text,
+            score,
+            readiness_checks,
+            recommendation,
+        ) = self._readiness_panel(analysis, properties, definition)
         if properties.com_m is None:
             missing = ", ".join(properties.missing_com)
             com_text = (
@@ -1407,6 +1731,19 @@ class SpacecraftDesignerUI:
             else ""
         )
         values = {
+            "spacecraft_architecture_summary": self._architecture_summary(),
+            "spacecraft_model_verdict": verdict,
+            "spacecraft_readiness_score": score_text,
+            "spacecraft_readiness_bar": score,
+            "spacecraft_model_recommendation": recommendation,
+            "health_delta_v": f"DELTA-V  {analysis.delta_v / 1000:.2f} km/s",
+            "health_twr": f"TWR  {analysis.twr:.2f}",
+            "health_power": f"POWER  {analysis.power_surplus_kw:+.2f} kW",
+            "health_stability": (
+                "STABILITY  unknown"
+                if tip_over is None
+                else f"STABILITY  {tip_over:.1f}°"
+            ),
             "spacecraft_dry_mass": f"Dry mass: {analysis.dry_mass:,.1f} kg",
             "spacecraft_fuel_mass": f"Fuel mass: {analysis.fuel_mass:,.1f} kg",
             "spacecraft_wet_mass": f"Wet mass: {analysis.wet_mass:,.1f} kg",
@@ -1434,15 +1771,50 @@ class SpacecraftDesignerUI:
             "spacecraft_mission_status": self._mission_text(mission),
             "spacecraft_warnings": "\n".join(analysis.warnings),
             "spacecraft_lunar_check": prescreen_text(lunar_prescreen(analysis)),
-            "spacecraft_data_readiness": assess_definition(self.spacecraft).summary(),
+            "spacecraft_data_readiness": definition.summary(),
         }
         for tag, value in values.items():
             if dpg.does_item_exist(tag):
                 dpg.set_value(tag, value)
+        check_colors = {
+            True: (100, 220, 150),
+            False: (255, 105, 90),
+        }
+        for key, label, passed in readiness_checks:
+            tag = f"spacecraft_readiness_{key}"
+            if dpg.does_item_exist(tag):
+                dpg.set_value(tag, f"{'PASS' if passed else 'CHECK'}  {label}")
+                dpg.configure_item(tag, color=check_colors[passed])
+        self._set_item_color(
+            "health_delta_v",
+            check_colors[lunar_prescreen(analysis).delta_v_ok],
+        )
+        self._set_item_color(
+            "health_twr",
+            check_colors[lunar_prescreen(analysis).liftoff_ok],
+        )
+        self._set_item_color(
+            "health_power",
+            check_colors[analysis.power_surplus_kw > 0.0],
+        )
+        self._set_item_color(
+            "health_stability",
+            (255, 105, 90)
+            if tip_over is not None and tip_over <= 0.0
+            else (100, 220, 150)
+            if tip_over is not None
+            else (255, 190, 80),
+        )
         if dpg.does_item_exist("spacecraft_name_input"):
             dpg.set_value("spacecraft_name_input", self.spacecraft.name)
         if dpg.does_item_exist("spacecraft_mass_dry_series"):
             self._refresh_plots()
+        self._set_item_color("spacecraft_model_verdict", verdict_color)
+        self._set_item_color(
+            "spacecraft_readiness_bar",
+            (100, 220, 150) if score >= 0.8 else (255, 190, 80) if score >= 0.6 else (255, 105, 90),
+        )
+        self._refresh_mission_timeline(running=self.mission_running)
         self.events.publish("analysis.updated", analysis, mission)
 
     @staticmethod
