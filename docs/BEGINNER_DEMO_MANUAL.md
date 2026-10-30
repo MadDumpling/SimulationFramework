@@ -369,7 +369,7 @@ reports trajectory and encounter quantities such as required injection
 delta-v, closest approach, and whether the path enters the estimated lunar
 SOI.
 
-To keep the demo honest, explain these limitations when showing a success:
+Here are the current limitations when showing success:
 
 - The 9.4 km/s Earth-ascent figure is a fixed allowance, not an Earth launch
   simulation. There is no launch site, atmosphere, drag, Earth rotation,
