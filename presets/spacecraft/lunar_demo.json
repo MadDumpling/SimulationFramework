@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "name": "Lunar-capable demo (illustrative)",
+  "revision": "Single-stage lunar reachability screening example; not flight hardware",
+  "provenance": {
+    "quality": "illustrative",
+    "notes": "Demonstration values pass this application's ideal single-stage lunar reachability checks. This is not a flyable or flight-certified vehicle."
+  },
+  "components": [
+    {
+      "type": "Engine",
+      "id": "lunar-demo-engine",
+      "name": "Demo heavy engine",
+      "dry_mass": 500.0,
+      "thrust": 15000000.0,
+      "isp": 300.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Artificially high thrust and low engine mass for a reachability demonstration; not a real engine."
+      }
+    },
+    {
+      "type": "FuelTank",
+      "id": "lunar-demo-tank",
+      "name": "Demo heavy tank",
+      "dry_mass": 2500.0,
+      "capacity": 400000.0,
+      "fuel_mass": 400000.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Artificially low tank mass for its propellant capacity; not a real tank."
+      }
+    },
+    {
+      "type": "Payload",
+      "id": "lunar-demo-payload",
+      "name": "Demo payload",
+      "dry_mass": 1000.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Illustrative payload mass."
+      }
+    },
+    {
+      "type": "PowerSystem",
+      "id": "lunar-demo-power",
+      "name": "Demo solar array",
+      "dry_mass": 80.0,
+      "generation_kw": 1.2,
+      "storage_kwh": 5.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Illustrative power-system parameters."
+      }
+    }
+  ],
+  "layout": {}
+}

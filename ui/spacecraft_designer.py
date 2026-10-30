@@ -41,7 +41,7 @@ DEFAULT_PRESET = (
     Path(__file__).resolve().parents[1]
     / "presets"
     / "spacecraft"
-    / "spacecraft_mvp.json"
+    / "lunar_demo.json"
 )
 
 

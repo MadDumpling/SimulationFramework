@@ -10,10 +10,10 @@ from spacecraft.presets import load_spacecraft
 from ui.spacecraft_designer import DEFAULT_PRESET, SpacecraftDesignerUI
 
 
-def test_default_preset_contains_apollo_descent_component_categories():
+def test_default_preset_is_the_lunar_capable_demo():
     craft = load_spacecraft(DEFAULT_PRESET)
 
-    assert craft.name == "Apollo Lunar Module (descent)"
+    assert craft.name == "Lunar-capable demo (illustrative)"
     assert {Engine, FuelTank, Payload} <= {type(part) for part in craft.components}
 
 
