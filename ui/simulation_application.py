@@ -23,6 +23,7 @@ from rendering import (
 
 from .controls import SimulationUI
 from .dpg_input_source import DpgInputSource
+from .spacecraft_designer import SpacecraftDesignerUI
 
 
 class SimulationApplication:
@@ -94,6 +95,10 @@ class SimulationApplication:
             self.events,
         )
 
+        self.spacecraft_ui = SpacecraftDesignerUI(
+            self.events,
+        )
+
         self.input_manager = (
             InputManager()
         )
@@ -117,6 +122,7 @@ class SimulationApplication:
         )
 
         self.ui.build()
+        self.spacecraft_ui.build()
 
     def update(self):
 
