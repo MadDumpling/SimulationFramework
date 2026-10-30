@@ -114,6 +114,9 @@ For a plain-language explanation of the equations, mission checks, and
 selectable failure/encounter examples, see
 [docs/LUNAR_MISSION_PHYSICS_AND_DEMO_SCENARIOS.md](docs/LUNAR_MISSION_PHYSICS_AND_DEMO_SCENARIOS.md).
 
+For a beginner-friendly, step-by-step guide to running and presenting the app,
+see the [Spacecraft Configurator Beginner's Demo Manual](docs/BEGINNER_DEMO_MANUAL.md).
+
 ## Vehicle definition
 
 Every component and the vehicle itself carry a **data provenance** record:

@@ -83,6 +83,16 @@ def create_dockspace():
             "Click select · F frame · R reset",
             color=(150, 165, 185),
         )
+        dpg.add_text(
+            "No component selected",
+            tag="viewport_component_title",
+            color=(255, 190, 80),
+        )
+        dpg.add_text(
+            "Select a part to inspect its mass and modeled hardware ratings.",
+            tag="viewport_component_details",
+            color=(195, 205, 220),
+        )
         dpg.add_text(" ", tag="mission_banner", wrap=1320)
         dpg.add_image(
             "viewport_texture",

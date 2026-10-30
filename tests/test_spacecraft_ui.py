@@ -7,6 +7,7 @@ from spacecraft.components import Engine, FuelTank, Payload
 from spacecraft.mission import MissionSimulationResult
 from spacecraft.placement import Placement
 from spacecraft.presets import load_spacecraft
+from ui.designer_application import DesignerApplication
 from ui.mission_outcome import lunar_mission_report
 from ui.spacecraft_designer import (
     DEFAULT_PRESET,
@@ -27,6 +28,120 @@ def test_default_preset_is_the_lunar_capable_demo():
         "Battery",
         "Avionics",
     } <= {type(part).__name__ for part in craft.components}
+
+
+def test_architecture_summary_reports_actual_cluster_counts_and_target():
+    ui = SpacecraftDesignerUI(EventBus())
+
+    summary = ui._architecture_summary()
+
+    assert "Components: 8" in summary
+    assert "Engines: 1 · fuel tanks: 1 · RCS thrusters: 4" in summary
+    assert "Solar arrays: 1 · batteries: 1 · avionics: 1 · landing legs: 4" in summary
+    assert "Mission target: Low Earth Orbit" in summary
+
+
+def test_readiness_panel_discloses_screening_not_flight_readiness():
+    ui = SpacecraftDesignerUI(EventBus())
+    from spacecraft.mass_properties import mass_properties
+    from spacecraft.readiness import assess_definition
+
+    report = assess_definition(ui.spacecraft)
+    verdict, color, score_text, score, checks, recommendation = ui._readiness_panel(
+        ui.analysis,
+        mass_properties(ui.spacecraft),
+        report,
+    )
+
+    assert "INITIAL LUNAR SCREEN PASSED" in verdict
+    assert "Not flight readiness" in score_text
+    assert 0.0 <= score <= 1.0
+    assert ("launch", "Launch capability", True) in checks
+    assert ("com", "Center-of-mass data", False) in checks
+    assert "Run the date-specific lunar trajectory screen" in recommendation
+
+
+def test_readiness_verdict_warns_when_encounter_predicts_surface_impact():
+    ui = SpacecraftDesignerUI(EventBus())
+    ui.mission_result = MissionSimulationResult(
+        simulated=True,
+        success=True,
+        surface_impact=True,
+        departure_time="2030-01-01T00:00:00.000",
+        arrival_time="2030-01-06T00:00:00.000",
+        transfer_time=5.0 * u.day,
+        tli_delta_v=3.1 * u.km / u.s,
+        required_earth_departure_delta_v=9.4 * u.km / u.s,
+        available_delta_v=14.0 * u.km / u.s,
+        closest_approach=1_000.0 * u.km,
+        lunar_sphere_of_influence=66_000.0 * u.km,
+        trajectory_points=5000,
+        data_source="JPL DE440s",
+        reasons=(),
+        assumptions=(),
+    )
+    from spacecraft.mass_properties import mass_properties
+    from spacecraft.readiness import assess_definition
+
+    verdict, color, *_ = ui._readiness_panel(
+        ui.analysis,
+        mass_properties(ui.spacecraft),
+        assess_definition(ui.spacecraft),
+    )
+
+    assert "MEAN-SURFACE IMPACT PREDICTED" in verdict
+    assert color == (255, 190, 80)
+
+
+def test_design_impact_reports_metric_deltas():
+    from spacecraft.analysis import SpacecraftAnalysis
+
+    before = SpacecraftAnalysis(dry_mass=100.0, wet_mass=200.0, delta_v=1_000.0)
+    after = SpacecraftAnalysis(dry_mass=110.0, wet_mass=220.0, delta_v=1_250.0)
+
+    impact = SpacecraftDesignerUI._design_impact_text(before, after)
+
+    assert "Dry mass: +10.00 kg" in impact
+    assert "Wet mass: +20.00 kg" in impact
+    assert "Ideal delta-v: +250.00 m/s" in impact
+
+
+def test_selected_component_viewport_overlay_shows_hardware_details():
+    ui = SpacecraftDesignerUI(EventBus())
+    engine = next(part for part in ui.spacecraft.components if isinstance(part, Engine))
+    app = DesignerApplication.__new__(DesignerApplication)
+    app.designer = ui
+    app.viewport = type("ViewportState", (), {"selected_id": engine.id})()
+    designer_module.dpg.set_value.reset_mock()
+
+    app._refresh_component_overlay()
+
+    values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert values["viewport_component_title"] == engine.name
+    assert f"Main-engine thrust: {engine.thrust:,.1f} N" in values[
+        "viewport_component_details"
+    ]
+    assert f"Specific impulse: {engine.isp:,.1f} s" in values[
+        "viewport_component_details"
+    ]
+
+
+def test_mission_milestone_cards_mirror_current_timeline_state():
+    ui = SpacecraftDesignerUI(EventBus())
+    designer_module.dpg.set_value.reset_mock()
+
+    ui._refresh_mission_timeline()
+
+    values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert values["mission_stage_launch"] == "Launch: READY"
+    assert values["mission_stage_arrival"] == "Lunar arrival: READY"
+    assert values["mission_stage_touchdown"] == "Touchdown: READY"
 
 
 def test_loading_showcase_scenario_sets_preset_and_mission_inputs(monkeypatch):
@@ -418,6 +533,8 @@ def test_analysis_panel_reports_auxiliary_thrust_and_power_surplus():
     }
     assert values["spacecraft_rcs_thrust"].startswith("RCS thrust: 1,800.0 N")
     assert "+2.05 kW surplus" in values["spacecraft_power"]
+    assert "spacecraft_readiness_bar" in values
+    assert values["health_power"].startswith("POWER  +2.05 kW")
 
 
 def test_mirror_copy_reflects_placement_and_selects_the_copy(tmp_path):
