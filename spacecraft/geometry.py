@@ -8,13 +8,14 @@ Sizes are derived from component properties with illustrative densities and
 scaling rules. The result is a readable visualization, not engineering CAD.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cache
 import math
 
 import numpy as np
 
 from .components import Component, Engine, FuelTank, Payload, PowerSystem
+from .mass_properties import mass_properties
 from .transforms import (  # noqa: F401  (re-exported for existing callers)
     euler_xyz_degrees,
     rotate_x,
@@ -286,6 +287,9 @@ def layout_spacecraft(
             )
         )
 
+    # Legacy designs without explicit placement retain the familiar automatic stack.
+    # Once any parts have placement data, each placed component is rendered from
+    # its resolved transform below, while unplaced parts remain auto-stacked.
     # Engines hang below a shared mount plane.
     if engines:
         mount = max(engine_exit_radius(e) * 2.6 for e in engines)
@@ -367,4 +371,170 @@ def layout_spacecraft(
 
     layout.height = y
     layout.extent = extent
+
+    placed = _placement_transforms(spacecraft)
+    if placed:
+        layout.parts = [
+            replace(
+                part,
+                model=(
+                    placed[part.component_id]
+                    @ translate(*(-default_centres[part.component_id]))
+                    @ part.model
+                ).astype(np.float32),
+            )
+            if part.component_id in placed
+            else part
+            for part in layout.parts
+        ]
+
+    properties = mass_properties(spacecraft)
+    if properties.com_m is not None:
+        com_x, com_y, com_z = properties.com_m
+        marker_radius = max(0.08, min(radius * 0.09, 0.35))
+        parts.append(
+            PartVisual(
+                None,
+                "sphere",
+                translate(com_x, com_y, com_z)
+                @ scale(marker_radius, marker_radius, marker_radius),
+                (1.0, 0.78, 0.12),
+            )
+        )
+
+    if spacecraft.landing_gear is not None:
+        footprint = spacecraft.landing_gear.footprint_radius_m
+        if footprint is not None and footprint > 0.0:
+            parts.append(
+                PartVisual(
+                    None,
+                    "cylinder",
+                    translate(0.0, 0.005, 0.0) @ scale(footprint, 0.005, footprint),
+                    (0.18, 0.85, 0.38),
+                )
+            )
     return layout
+
+
+def _placement_transforms(spacecraft: Spacecraft) -> dict[str, np.ndarray]:
+    """Resolve explicit part attachments to vehicle-frame transforms.
+
+    Node positions are approximate envelopes from dimensions, with the current
+    auto-layout model supplying a sensible default length when dimensions are
+    missing. Root placements define a centre translation; attached placements
+    snap the selected child node to the requested parent node, then apply offset
+    and local Euler rotation.
+    """
+    placed_parts = {
+        component.id: component
+        for component in spacecraft.components
+        if component.placement is not None
+    }
+    if not placed_parts:
+        return {}
+
+    defaults = layout_spacecraft(_without_placements(spacecraft), explode=0.0)
+    default_centres: dict[str, np.ndarray] = {}
+    for part_visual in defaults.parts:
+        if part_visual.component_id is None or part_visual.component_id in default_centres:
+            continue
+        default_centres[part_visual.component_id] = (
+            part_visual.model @ np.array([0.0, 0.5, 0.0, 1.0], dtype=np.float32)
+        )[:3]
+
+    transforms: dict[str, np.ndarray] = {}
+    visiting: set[str] = set()
+
+    def resolve(component_id: str) -> np.ndarray:
+        if component_id in transforms:
+            return transforms[component_id]
+        if component_id in visiting:
+            raise ValueError("cycle detected in component placement tree")
+        component = placed_parts[component_id]
+        placement = component.placement
+        assert placement is not None
+        visiting.add(component_id)
+        local_rotation = euler_xyz_degrees(*placement.rotation_deg)
+
+        if placement.parent_id is None:
+            result = translate(*placement.offset) @ local_rotation
+        else:
+            parent = spacecraft.get_component(placement.parent_id)
+            if parent is None:
+                raise ValueError(
+                    f"placement for {component.name} references missing parent "
+                    f"{placement.parent_id}"
+                )
+            parent_transform = (
+                resolve(parent.id)
+                if parent.id in placed_parts
+                else translate(*default_centres.get(parent.id, np.zeros(3)))
+            )
+            parent_node = _node_local(parent, placement.parent_node)
+            child_node = _node_local(component, placement.node)
+            angle = np.deg2rad(placement.angle_deg)
+            radial_rotation = rotate_y(angle)
+            target = parent_transform @ (
+                translate(*parent_node)
+                @ radial_rotation
+                @ translate(*placement.offset)
+            )
+            result = target @ local_rotation @ translate(-child_node)
+
+        visiting.remove(component_id)
+        transforms[component_id] = result.astype(np.float32)
+        return transforms[component_id]
+
+    for component_id in placed_parts:
+        resolve(component_id)
+    return transforms
+
+
+def _without_placements(spacecraft: Spacecraft) -> Spacecraft:
+    """Build a temporary automatic-layout assembly without recursive placements."""
+    from copy import copy
+
+    clone = copy(spacecraft)
+    clone.components = []
+    for component in spacecraft.components:
+        duplicate = copy(component)
+        duplicate.placement = None
+        clone.components.append(duplicate)
+    return clone
+
+
+def _node_local(component: Component, node: str):
+    length = (
+        component.dimensions_m[0]
+        if component.dimensions_m is not None
+        else _fallback_component_length(component)
+    )
+    if node == "top":
+        return np.array([0.0, length / 2.0, 0.0])
+    if node == "bottom":
+        return np.array([0.0, -length / 2.0, 0.0])
+    if node == "side":
+        return np.array([core_radius_for(component), 0.0, 0.0])
+    if node == "mount":
+        return center
+    raise ValueError(f"Unsupported attachment node: {node}")
+
+
+def _fallback_component_length(component: Component) -> float:
+    if isinstance(component, FuelTank):
+        radius = core_radius_for(component)
+        volume = component.capacity / PROPELLANT_DENSITY
+        return float(np.clip(volume / (math.pi * radius**2), 0.3 * radius, 40.0))
+    if isinstance(component, Engine):
+        return engine_exit_radius(component) * 2.6
+    radius = core_radius_for(component)
+    volume = component.dry_mass / PAYLOAD_DENSITY
+    return float(np.clip(volume / (math.pi * radius**2), 0.4 * radius, 6.0 * radius))
+
+
+def core_radius_for(component: Component) -> float:
+    if isinstance(component, FuelTank) and component.capacity > 0.0:
+        return float(np.clip((component.capacity / PROPELLANT_DENSITY / (6.0 * math.pi)) ** (1.0 / 3.0), 0.5, 5.0))
+    if component.dimensions_m is not None:
+        return component.dimensions_m[1] / 2.0
+    return 0.5
