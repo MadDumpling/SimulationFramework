@@ -1,6 +1,6 @@
 # Spacecraft Configurator
 
-An interactive spacecraft configuration designer. A DearPyGui panel edits the
+An interactive spacecraft mission-design and analysis platform. A DearPyGui panel edits the
 vehicle (engines, propellant tanks, payloads, landing legs, RCS thrusters, solar
 arrays, batteries, and avionics) and an OpenGL viewport shows it live in 3D.
 Mass, ideal delta-v, TWR, burn time, and installed power ratings update as the
