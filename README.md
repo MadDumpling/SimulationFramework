@@ -49,8 +49,8 @@ falls short, too much fuel for the engines cannot lift off.
 The app opens with the **Lunar Demo** loaded. It passes the current single-stage
 reachability checks (liftoff thrust-to-weight and ideal delta-v for Earth ascent plus
 lunar transfer), so you can run the trajectory screening immediately. The **Lunar
-mission check** shows both numbers as you edit the design. This preset is illustrative,
-not flight hardware: its engine thrust and tank mass are deliberately unrealistic. A
+mission check** shows both numbers as you edit the design. This preset uses representative engineering models
+rather than flight-certified hardware A
 passing check is not proof that a real spacecraft can fly or land on the Moon.
 
 ## Mission flight animation
