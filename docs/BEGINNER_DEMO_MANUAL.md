@@ -1,8 +1,8 @@
-# Spacecraft Configurator
+# Celeste SpaceWorks
 
 ## Overview
 
-Spacecraft Configurator is an interactive spacecraft mission-design and analysis platform that combines spacecraft assembly, engineering evaluation, 3D visualization, and Earth-to-Moon mission screening in a single workflow.
+Celeste SpaceWorks is an interactive spacecraft mission-design and analysis platform that combines spacecraft assembly, engineering evaluation, 3D visualization, and Earth-to-Moon mission screening in a single workflow.
 
 Users can:
 
