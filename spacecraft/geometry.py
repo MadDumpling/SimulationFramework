@@ -107,6 +107,45 @@ def rotate_y(angle: float) -> np.ndarray:
     return matrix
 
 
+def rotate_z(angle: float) -> np.ndarray:
+    c, s = math.cos(angle), math.sin(angle)
+    matrix = np.eye(4, dtype=np.float32)
+    matrix[0, 0], matrix[0, 1] = c, -s
+    matrix[1, 0], matrix[1, 1] = s, c
+    return matrix
+
+
+def rotation_between(source, target, fraction: float = 1.0) -> np.ndarray:
+    """Rotation taking direction ``source`` toward ``target`` (shortest arc).
+
+    ``fraction`` in [0, 1] rotates only part of the way (0 = identity).
+    """
+    a = np.asarray(source, dtype=np.float64)
+    b = np.asarray(target, dtype=np.float64)
+    a = a / np.linalg.norm(a)
+    b = b / np.linalg.norm(b)
+    axis = np.cross(a, b)
+    sine = np.linalg.norm(axis)
+    cosine = float(np.dot(a, b))
+    matrix = np.eye(4, dtype=np.float32)
+    if sine < 1e-9:
+        if cosine > 0.0:
+            return matrix
+        # Opposite directions: half turn about any axis perpendicular to a.
+        axis = np.cross(a, (1.0, 0.0, 0.0))
+        if np.linalg.norm(axis) < 1e-6:
+            axis = np.cross(a, (0.0, 0.0, 1.0))
+        angle = math.pi
+    else:
+        angle = math.atan2(sine, cosine)
+    angle *= float(np.clip(fraction, 0.0, 1.0))
+    axis = axis / np.linalg.norm(axis)
+    x, y, z = axis
+    k = np.array([[0.0, -z, y], [z, 0.0, -x], [-y, x, 0.0]])
+    matrix[:3, :3] = np.eye(3) + math.sin(angle) * k + (1.0 - math.cos(angle)) * (k @ k)
+    return matrix
+
+
 # ---------------------------------------------------------------------------
 # Unit primitives
 # ---------------------------------------------------------------------------
@@ -192,6 +231,13 @@ def _bell_profile(steps: int = 16):
     return [(0.32 + 0.68 * (1.0 - i / steps) ** 1.8, i / steps) for i in range(steps + 1)]
 
 
+def _sphere_profile(steps: int = 24):
+    return [
+        (math.sin(math.pi * i / steps), -math.cos(math.pi * i / steps))
+        for i in range(steps + 1)
+    ]
+
+
 @cache
 def primitive(name: str) -> Mesh:
     builders = {
@@ -199,6 +245,7 @@ def primitive(name: str) -> Mesh:
         "nose": lambda: lathe(_nose_profile()),
         "bell": lambda: lathe(_bell_profile()),
         "box": box,
+        "sphere": lambda: lathe(_sphere_profile()),
     }
     try:
         return builders[name]()
@@ -206,7 +253,7 @@ def primitive(name: str) -> Mesh:
         raise ValueError(f"Unknown primitive: {name}") from error
 
 
-PRIMITIVES = ("cylinder", "nose", "bell", "box")
+PRIMITIVES = ("cylinder", "nose", "bell", "box", "sphere")
 
 
 # ---------------------------------------------------------------------------

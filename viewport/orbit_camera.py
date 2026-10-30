@@ -53,6 +53,20 @@ class OrbitCamera:
         fit = radius / math.sin(self.FOV_Y / 2.0) * 1.05
         self.distance = float(np.clip(fit, self.min_distance, self.max_distance))
 
+    def follow(self, center, radius: float, dt: float, rate: float = 3.0) -> None:
+        """Ease the target and distance toward keeping a bounding sphere in view."""
+        blend = 1.0 - math.exp(-rate * max(dt, 0.0))
+        fit = max(radius, 1.0) / math.sin(self.FOV_Y / 2.0) * 1.1
+        self.max_distance = max(self.max_distance, fit * 1.5)
+        self.target = self.target + (np.asarray(center, dtype=np.float32) - self.target) * blend
+        self.distance = float(
+            np.clip(
+                self.distance + (fit - self.distance) * blend,
+                self.min_distance,
+                self.max_distance,
+            )
+        )
+
     def orbit(self, dx_pixels: float, dy_pixels: float, sensitivity: float = 0.008) -> None:
         self.yaw -= dx_pixels * sensitivity
         self.pitch = float(

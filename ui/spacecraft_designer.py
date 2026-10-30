@@ -1,6 +1,7 @@
 """DearPyGui spacecraft configurator panel for the 3D OpenGL viewport."""
 
 from dataclasses import replace
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -25,6 +26,8 @@ from spacecraft.components import (
 from spacecraft.mission import MissionSimulationResult, run_lunar_flyby_simulation
 from spacecraft.apollo_lm import PRESET_PATH as APOLLO_LM_PRESET
 from spacecraft.provenance import QUALITIES
+from .mission_outcome import can_lift_off, lunar_prescreen, prescreen_text
+from spacecraft.demo_designs import build_lunar_demo
 from spacecraft.readiness import assess_definition
 from spacecraft.presets import load_spacecraft, save_spacecraft
 from spacecraft.vehicle import Spacecraft
@@ -35,6 +38,14 @@ DEFAULT_PRESET = (
     / "spacecraft"
     / "spacecraft_mvp.json"
 )
+
+
+class _MissionRun:
+    """One background mission run; the worker stores ``outcome`` last when done."""
+
+    def __init__(self, serial: int):
+        self.serial = serial
+        self.outcome = None  # (result, error) once finished
 
 
 class SpacecraftDesignerUI:
@@ -51,6 +62,10 @@ class SpacecraftDesignerUI:
         self.analysis = analyze_spacecraft(self.spacecraft)
         self.mission_result: MissionSimulationResult | None = None
         self.selected_id: str | None = None
+        # The app sets this so the viewport keeps animating during the (slow) run.
+        self.background_missions = False
+        self._mission_run: _MissionRun | None = None
+        self._mission_serial = 0
         self.built = False
 
     def _load_starting_spacecraft(self):
@@ -96,6 +111,7 @@ class SpacecraftDesignerUI:
                 dpg.add_button(label="Load Design", callback=self.load)
                 dpg.add_button(label="Clear Assembly", callback=self.clear)
                 dpg.add_button(label="Load Apollo LM", callback=self.load_apollo_lm)
+                dpg.add_button(label="Load Lunar Demo", callback=self.load_lunar_demo)
             dpg.add_text("Viewport", bullet=True)
             dpg.add_slider_float(
                 label="Exploded view",
@@ -112,6 +128,7 @@ class SpacecraftDesignerUI:
                     callback=self.set_grid,
                 )
                 dpg.add_button(label="Reset Camera", callback=self.reset_camera)
+                dpg.add_button(label="Reset Flight", callback=self.reset_flight)
             dpg.add_text(
                 "Click a part in the 3D viewport to select it; F frames and R resets.",
                 color=(175, 190, 210),
@@ -142,6 +159,9 @@ class SpacecraftDesignerUI:
             )
             dpg.add_text("Mission status", tag="spacecraft_mission_status")
             dpg.add_text("", tag="spacecraft_warnings", wrap=560)
+            dpg.add_separator()
+            dpg.add_text("Lunar mission check (single-stage screening)", bullet=True)
+            dpg.add_text("", tag="spacecraft_lunar_check", wrap=560)
             dpg.add_separator()
             dpg.add_text("Vehicle data readiness", bullet=True)
             dpg.add_text("", tag="spacecraft_data_readiness", wrap=560)
@@ -244,6 +264,10 @@ class SpacecraftDesignerUI:
 
     def reset_camera(self, sender=None, app_data=None, user_data=None):
         self.events.publish("view.reset_camera")
+
+    def reset_flight(self, sender=None, app_data=None, user_data=None):
+        self._cancel_mission()
+        self.events.publish("flight.reset")
 
     def remove_component(self, sender, app_data, user_data):
         if not self.spacecraft.remove_component(user_data):
@@ -471,7 +495,14 @@ class SpacecraftDesignerUI:
 
     def load_apollo_lm(self, sender=None, app_data=None, user_data=None):
         """Load the Apollo LM reference vehicle without changing the save path."""
-        self.spacecraft = load_spacecraft(APOLLO_LM_PRESET)
+        self._load_reference(load_spacecraft(APOLLO_LM_PRESET))
+
+    def load_lunar_demo(self, sender=None, app_data=None, user_data=None):
+        """Load an illustrative design that clears the lunar pre-screen."""
+        self._load_reference(build_lunar_demo())
+
+    def _load_reference(self, spacecraft):
+        self.spacecraft = spacecraft
         self.selected_id = None
         self.events.publish("component.selected", None)
         self.events.publish("spacecraft.updated", self.spacecraft)
@@ -494,22 +525,88 @@ class SpacecraftDesignerUI:
         if not str(departure_date).strip():
             self._set_lunar_status("Enter a departure date in UTC (YYYY-MM-DD).", "")
             return
+        if self._mission_run is not None and self._mission_run.serial == self._mission_serial:
+            return  # a run is already in progress
+        self.mission_result = None  # a rerun starts clean; no stale result lingers
         self._set_lunar_status(
             "Mission simulation running…",
             "Downloading/reading JPL ephemeris and integrating the trajectory.",
         )
+        liftoff, has_thrust = can_lift_off(self.analysis)
+        self.events.publish("mission.started", liftoff, has_thrust)
+        self._mission_serial += 1
+        serial = self._mission_serial
+        args = (self.spacecraft, departure_date, float(transfer_days))
+        if not self.background_missions:
+            self._finish_mission(serial, *self._compute_mission(*args))
+            return
+
+        run = _MissionRun(serial)
+
+        def work():
+            try:
+                outcome = self._compute_mission(*args)
+            except BaseException as error:  # never leave the run unreported
+                outcome = (None, error)
+            run.outcome = outcome  # set last: marks completion
+
+        self._mission_run = run
+        threading.Thread(target=work, daemon=True).start()
+
+    @staticmethod
+    def _compute_mission(spacecraft, departure_date, transfer_days):
+        """Run the simulation; returns (result, error). Safe to call off-thread."""
         try:
-            result = run_lunar_flyby_simulation(
-                self.spacecraft,
-                departure_date,
-                transfer_time=float(transfer_days) * u.day,
+            return (
+                run_lunar_flyby_simulation(
+                    spacecraft,
+                    departure_date,
+                    transfer_time=transfer_days * u.day,
+                ),
+                None,
             )
         except Exception as error:
+            return None, error
+
+    @property
+    def mission_running(self) -> bool:
+        return self._mission_run is not None
+
+    def poll_mission(self):
+        """Apply a finished background run on the UI thread (call once per frame).
+
+        Completion is signalled by the worker storing its outcome, not by thread
+        liveness: a just-created thread reports not-alive until it has started.
+        """
+        run = self._mission_run
+        if run is None or run.outcome is None:
+            return
+        self._mission_run = None
+        self._finish_mission(run.serial, *run.outcome)
+
+    def _cancel_mission(self):
+        """Discard any run in progress; its result will never be applied."""
+        self._mission_serial += 1
+        if self._mission_run is not None:
+            self._mission_run = None
+            self._set_lunar_status(
+                "Mission cancelled — run the simulation again.",
+                "The run was stopped before it finished, so there is no result.",
+            )
+            self.events.publish("mission.cancelled")
+
+    def _finish_mission(self, serial, result, error):
+        if serial != self._mission_serial:
+            # The design or inputs changed mid-run; the result no longer applies.
+            self.events.publish("mission.cancelled")
+            return
+        if error is not None:
             self.mission_result = None
             self._set_lunar_status(
                 "Simulation could not run.",
                 f"{error}\nCheck the date, network, and JPL DE440s access.",
             )
+            self.events.publish("mission.failed", error)
             return
         self.mission_result = result
         self.events.publish("mission.completed", result)
@@ -548,6 +645,7 @@ class SpacecraftDesignerUI:
         self._set_lunar_status(title, details)
 
     def _invalidate_mission_result(self, sender=None, app_data=None, user_data=None):
+        self._cancel_mission()
         if self.mission_result is not None:
             self.mission_result = None
             self._set_lunar_status(
@@ -585,6 +683,7 @@ class SpacecraftDesignerUI:
             ),
             "spacecraft_mission_status": self._mission_text(mission),
             "spacecraft_warnings": "\n".join(analysis.warnings),
+            "spacecraft_lunar_check": prescreen_text(lunar_prescreen(analysis)),
             "spacecraft_data_readiness": assess_definition(self.spacecraft).summary(),
         }
         for tag, value in values.items():

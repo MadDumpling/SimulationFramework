@@ -23,6 +23,41 @@ The designer panel adds components, edits their properties, duplicates parts
 tank length tracks propellant capacity, engine bell size tracks thrust, and
 solar-wing area tracks generation. This is a visualization aid, not CAD.
 
+## Why most designs fail the lunar mission
+
+The mission check is a single-stage screening, and it is strict. The vehicle needs
+thrust-to-weight above 1 to leave the pad, and about 12.6 km/s of ideal delta-v
+(9.4 km/s Earth ascent plus about 3.2 km/s transfer). The two pull against each other:
+adding propellant raises delta-v but lowers thrust-to-weight. With the catalog engine
+(845 kN, 300 s Isp) only a narrow band of designs passes: too little fuel or thrust
+falls short, too much fuel for the engines cannot lift off.
+
+The **Lunar mission check** in the designer panel shows both numbers for the current
+design as you edit it, says which gate fails, and suggests what to change. **Load
+Lunar Demo** loads an illustrative design that passes, so you can see a landing. Its
+tanks and engine are far lighter than real hardware of that size, so it shows the pass
+window, not a flyable vehicle.
+
+## Mission flight animation
+
+**Run Lunar Mission Simulation** also animates the viewport and shows a verdict
+banner above it. The vehicle lifts off and hovers while the simulation runs in
+the background, then the verdict decides what happens:
+
+| Verdict | Animation | Banner |
+| --- | --- | --- |
+| Path reaches the Moon | Flips tail-first, retro-burns, and lands softly on the white Moon sphere | `REACHED THE MOON` (green) |
+| Path misses the Moon | Flies past the Moon and is lost in space | `MISSION FAILED — misses the Moon`, with closest approach |
+| Vehicle cannot reach it (delta-v) | Engine sputters out, the vehicle falls back and crashes | `MISSION FAILED — cannot reach the Moon`, with the reason |
+| Cannot lift off (thrust-to-weight not above 1, or no engine) | Engine strains on the pad; the vehicle never leaves | `MISSION FAILED — cannot lift off`, with the reason |
+| Simulation error (e.g. offline) | Returns to the pad | `SIMULATION ERROR — no verdict` (amber) |
+
+Editing the design, or **Reset Flight**, returns the vehicle to the pad. The
+animation illustrates the verdict; it is not a plot of the computed trajectory.
+"Reached the Moon" still only means the path entered the Moon's sphere of
+influence: capture, descent and touchdown are not simulated, so the landing is
+an illustration and the banner says so.
+
 ## Lunar mission screening
 
 **Run Lunar Mission Simulation** takes a UTC departure date and transfer

@@ -53,6 +53,12 @@ def create_dockspace():
             color=(150, 165, 185),
         )
 
+        dpg.add_text(
+            " ",
+            tag="mission_banner",
+            wrap=1260,
+        )
+
         dpg.add_image(
             "viewport_texture",
             tag="viewport_image",
