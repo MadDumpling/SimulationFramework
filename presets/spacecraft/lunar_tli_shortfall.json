@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "name": "Failure demo — insufficient TLI propellant",
+  "revision": "Showcase scenario: passes liftoff and Earth-ascent checks, fails Lambert TLI check",
+  "provenance": {
+    "quality": "illustrative",
+    "notes": "Synthetic teaching example; not a real vehicle."
+  },
+  "components": [
+    {
+      "type": "Engine",
+      "id": "tli-shortfall-engine",
+      "name": "Demo transfer-limited engine",
+      "dry_mass": 500.0,
+      "thrust": 1800000.0,
+      "isp": 300.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic thrust selected to pass the initial TWR check."
+      }
+    },
+    {
+      "type": "FuelTank",
+      "id": "tli-shortfall-tank",
+      "name": "Demo limited-propellant tank",
+      "dry_mass": 2500.0,
+      "capacity": 100000.0,
+      "fuel_mass": 100000.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic propellant load: just enough to pass the ascent allowance, not the lunar injection."
+      }
+    },
+    {
+      "type": "Payload",
+      "id": "tli-shortfall-payload",
+      "name": "Demo payload",
+      "dry_mass": 1000.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic payload."
+      }
+    },
+    {
+      "type": "PowerSystem",
+      "id": "tli-shortfall-power",
+      "name": "Demo solar array",
+      "dry_mass": 80.0,
+      "generation_kw": 1.2,
+      "storage_kwh": 5.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic power system."
+      }
+    }
+  ],
+  "layout": {}
+}

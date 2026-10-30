@@ -184,6 +184,38 @@ def test_default_preset_clears_the_simulation_precheck_and_is_illustrative(
     assert all(part.provenance.quality == "illustrative" for part in craft.components)
 
 
+def test_showcase_failure_presets_fail_at_distinct_vehicle_gates(
+    simulation_passes_precheck,
+):
+    from pathlib import Path
+    from spacecraft.presets import load_spacecraft
+
+    preset_dir = Path(designer_module.DEFAULT_PRESET).parent
+    low_thrust = load_spacecraft(preset_dir / "lunar_low_thrust.json")
+    ascent_shortfall = load_spacecraft(preset_dir / "lunar_ascent_shortfall.json")
+    tli_shortfall = load_spacecraft(preset_dir / "lunar_tli_shortfall.json")
+    propellant_mismatch = load_spacecraft(preset_dir / "lunar_propellant_mismatch.json")
+
+    low_thrust_analysis = analyze_spacecraft(low_thrust)
+    assert low_thrust_analysis.twr < 1.0
+    assert low_thrust_analysis.delta_v > 12_600.0
+
+    ascent_analysis = analyze_spacecraft(ascent_shortfall)
+    assert ascent_analysis.twr > 1.0
+    assert ascent_analysis.delta_v < 9_400.0
+
+    tli_analysis = analyze_spacecraft(tli_shortfall)
+    assert tli_analysis.twr > 1.0
+    assert 9_400.0 < tli_analysis.delta_v < 12_600.0
+    assert simulation_passes_precheck(tli_shortfall)
+
+    mismatch_analysis = analyze_spacecraft(propellant_mismatch)
+    assert mismatch_analysis.fuel_mass == 0.0
+    assert mismatch_analysis.delta_v == 0.0
+    assert any("does not match" in warning for warning in mismatch_analysis.warnings)
+    assert any("No propellant compatible" in warning for warning in mismatch_analysis.warnings)
+
+
 # -- failure banner gives numbers -------------------------------------------------
 
 

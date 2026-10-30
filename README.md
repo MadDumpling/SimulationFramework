@@ -71,12 +71,34 @@ downloaded on first use and cached locally.
 This is trajectory screening, not capture or landing. It assumes a 200 km
 circular parking orbit, impulsive injection, a 9.4 km/s Earth-ascent allowance,
 and ideal rocket-equation delta-v. Catalog values are illustrative; enter
-verified masses and engine performance for meaningful results.
+verified masses and engine performance for meaningful results. After each run,
+the Mission tab reports vehicle mass/thrust/TWR, the complete delta-v budget and
+margins, closest-approach distance/time, lunar sphere-of-influence margin,
+relative speed at closest approach, estimated surface clearance, integrator
+settings, data source, and model assumptions. Failed runs
+include their blocking checks or measured miss distance and the run inputs that
+affect the modeled encounter. These diagnostics describe this model; they are
+not flight-validated failure predictions.
+
+## Apollo 11 historical reference
+
+The Mission tab also includes a fixed Apollo 11 / Saturn V AS-506 reference
+profile for 16 July 1969 from LC-39A. It exposes NASA CR-61291 launch, staging,
+parking-orbit, and TLI event/trajectory summary values. This is a source-backed
+historical reference, not a live simulation or raw-telemetry reconstruction:
+the source labels its event sequence predicted and does not provide the
+complete Saturn V stage mass, engine, aerodynamic, or guidance data needed to
+predict alternate designs. Keep it separate from the configurable Lunar Demo
+and JPL lunar-encounter screening.
 
 The product's actual success goal is a safe lunar touchdown. See
 [docs/LUNAR_LANDING_ROADMAP.md](docs/LUNAR_LANDING_ROADMAP.md) for the success
 definition, current-model limits, required real-world data, and implementation
 roadmap.
+
+For a plain-language explanation of the equations, mission checks, and
+selectable failure/encounter examples, see
+[docs/LUNAR_MISSION_PHYSICS_AND_DEMO_SCENARIOS.md](docs/LUNAR_MISSION_PHYSICS_AND_DEMO_SCENARIOS.md).
 
 ## Vehicle definition
 

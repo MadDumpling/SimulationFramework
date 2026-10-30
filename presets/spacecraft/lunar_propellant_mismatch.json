@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "name": "Failure demo — incompatible engine and tank propellant",
+  "revision": "Showcase scenario: full tank contains no propellant compatible with engine",
+  "provenance": {
+    "quality": "illustrative",
+    "notes": "Synthetic teaching example; not a real vehicle."
+  },
+  "components": [
+    {
+      "type": "Engine",
+      "id": "mismatch-engine",
+      "name": "Demo LOX/RP-1 engine",
+      "dry_mass": 500.0,
+      "thrust": 15000000.0,
+      "isp": 300.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic LOX/RP-1 engine."
+      }
+    },
+    {
+      "type": "FuelTank",
+      "id": "mismatch-tank",
+      "name": "Demo incompatible tank",
+      "dry_mass": 2500.0,
+      "capacity": 400000.0,
+      "fuel_mass": 400000.0,
+      "fuel_type": "LH2/LOX",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic LH2/LOX tank; the installed engine requires LOX/RP-1."
+      }
+    },
+    {
+      "type": "Payload",
+      "id": "mismatch-payload",
+      "name": "Demo payload",
+      "dry_mass": 1000.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic payload."
+      }
+    },
+    {
+      "type": "PowerSystem",
+      "id": "mismatch-power",
+      "name": "Demo solar array",
+      "dry_mass": 80.0,
+      "generation_kw": 1.2,
+      "storage_kwh": 5.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic power system."
+      }
+    }
+  ],
+  "layout": {}
+}

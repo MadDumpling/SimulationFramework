@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "name": "Failure demo — insufficient Earth-ascent delta-v",
+  "revision": "Showcase scenario: thrust passes, ideal delta-v below ascent allowance",
+  "provenance": {
+    "quality": "illustrative",
+    "notes": "Synthetic teaching example; not a real vehicle."
+  },
+  "components": [
+    {
+      "type": "Engine",
+      "id": "ascent-shortfall-engine",
+      "name": "Demo high-thrust engine",
+      "dry_mass": 500.0,
+      "thrust": 15000000.0,
+      "isp": 300.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic 15 MN thrust selected to clear the TWR gate."
+      }
+    },
+    {
+      "type": "FuelTank",
+      "id": "ascent-shortfall-tank",
+      "name": "Demo partly loaded tank",
+      "dry_mass": 2500.0,
+      "capacity": 400000.0,
+      "fuel_mass": 30000.0,
+      "fuel_type": "LOX/RP-1",
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic 30 tonne propellant load; insufficient ideal delta-v for Earth ascent."
+      }
+    },
+    {
+      "type": "Payload",
+      "id": "ascent-shortfall-payload",
+      "name": "Demo payload",
+      "dry_mass": 1000.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic payload."
+      }
+    },
+    {
+      "type": "PowerSystem",
+      "id": "ascent-shortfall-power",
+      "name": "Demo solar array",
+      "dry_mass": 80.0,
+      "generation_kw": 1.2,
+      "storage_kwh": 5.0,
+      "provenance": {
+        "quality": "illustrative",
+        "notes": "Synthetic power system."
+      }
+    }
+  ],
+  "layout": {}
+}

@@ -34,7 +34,14 @@ from spacecraft.provenance import QUALITIES
 from spacecraft.readiness import assess_definition
 from spacecraft.vehicle import Spacecraft
 
-from .mission_outcome import can_lift_off, lunar_prescreen, prescreen_text
+from .mission_outcome import (
+    can_lift_off,
+    apollo11_reference_report,
+    apollo11_reference_summary,
+    lunar_mission_report,
+    lunar_prescreen,
+    prescreen_text,
+)
 from .mission_timeline import mission_timeline
 
 DEFAULT_PRESET = (
@@ -43,6 +50,50 @@ DEFAULT_PRESET = (
     / "spacecraft"
     / "lunar_demo.json"
 )
+SHOWCASE_SCENARIOS = {
+    "Lunar encounter — no surface impact": {
+        "preset": "lunar_demo.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 6.0,
+        "description": (
+            "Reference encounter: the propagated path enters the lunar SOI without "
+            "intersecting the mean-radius surface in this run."
+        ),
+    },
+    "Lunar encounter — surface impact estimate": {
+        "preset": "lunar_demo.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": (
+            "Same vehicle, different transfer time: this modeled path enters the lunar "
+            "SOI and intersects the mean-radius surface. Impact is not a safe landing."
+        ),
+    },
+    "Failure — insufficient lift-off thrust": {
+        "preset": "lunar_low_thrust.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "Good ideal delta-v cannot compensate for TWR below 1.0.",
+    },
+    "Failure — insufficient Earth-ascent delta-v": {
+        "preset": "lunar_ascent_shortfall.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "The design has thrust, but its ideal delta-v is below the 9.4 km/s ascent allowance.",
+    },
+    "Failure — insufficient TLI propellant": {
+        "preset": "lunar_tli_shortfall.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "It clears the initial ascent check but cannot pay the date-specific lunar injection burn.",
+    },
+    "Failure — engine/tank propellant mismatch": {
+        "preset": "lunar_propellant_mismatch.json",
+        "departure_date": "2026-10-30",
+        "transfer_days": 5.0,
+        "description": "The tank is full, but none of its propellant is compatible with the engine.",
+    },
+}
 
 
 class _MissionRun:
@@ -233,6 +284,38 @@ class SpacecraftDesignerUI:
                     dpg.add_text("", tag="spacecraft_data_readiness", wrap=460)
                 with dpg.tab(label="Mission"):
                     dpg.add_text("Lunar mission screening · JPL DE440s", bullet=True)
+                    dpg.add_text(
+                        apollo11_reference_summary(),
+                        color=(175, 190, 210),
+                        tag="apollo11_reference_summary",
+                    )
+                    with dpg.collapsing_header(
+                        label="Apollo 11 historical reference · AS-506",
+                        default_open=False,
+                    ):
+                        dpg.add_text(
+                            apollo11_reference_report(),
+                            tag="apollo11_reference_report",
+                            wrap=460,
+                        )
+                    dpg.add_separator()
+                    dpg.add_combo(
+                        items=list(SHOWCASE_SCENARIOS),
+                        default_value=next(iter(SHOWCASE_SCENARIOS)),
+                        label="Demo scenario",
+                        width=440,
+                        tag="lunar_demo_scenario",
+                    )
+                    dpg.add_button(
+                        label="Load demo scenario",
+                        callback=self.load_demo_scenario,
+                    )
+                    dpg.add_text(
+                        "Loads a spacecraft preset and sets the example departure "
+                        "date and transfer time.",
+                        color=(175, 190, 210),
+                        wrap=460,
+                    )
                     dpg.add_combo(
                         items=[profile.name for profile in MISSION_PROFILES.values()],
                         default_value=MISSION_PROFILES[self.mission_id].name,
@@ -273,7 +356,12 @@ class SpacecraftDesignerUI:
                         tag="lunar_reachability_status",
                         wrap=460,
                     )
-                    dpg.add_text("", tag="lunar_reachability_details", wrap=460)
+                    dpg.add_text(
+                        "",
+                        tag="lunar_reachability_details",
+                        wrap=460,
+                        color=(195, 205, 220),
+                    )
                     dpg.add_separator()
                     dpg.add_text("Mission timeline", bullet=True)
                     dpg.add_group(tag="lunar_timeline_container")
@@ -876,6 +964,34 @@ class SpacecraftDesignerUI:
         """Load an illustrative design that clears the lunar pre-screen."""
         self._load_reference(build_lunar_demo())
 
+    def load_demo_scenario(self, sender=None, app_data=None, user_data=None):
+        """Load a documented spacecraft and mission-input example."""
+        scenario_name = str(app_data or dpg.get_value("lunar_demo_scenario"))
+        scenario = SHOWCASE_SCENARIOS.get(scenario_name)
+        if scenario is None:
+            self._set_lunar_status(
+                "Unknown demo scenario.",
+                f"No showcase scenario is registered as {scenario_name!r}.",
+            )
+            return
+
+        preset_path = DEFAULT_PRESET.parent / scenario["preset"]
+        self._load_reference(load_spacecraft(preset_path))
+        if dpg.does_item_exist("lunar_departure_date"):
+            dpg.set_value("lunar_departure_date", scenario["departure_date"])
+        if dpg.does_item_exist("lunar_transfer_days"):
+            dpg.set_value("lunar_transfer_days", scenario["transfer_days"])
+        self._set_lunar_status(
+            f"DEMO SCENARIO READY — {scenario_name}",
+            (
+                f"{scenario['description']}\n"
+                f"Preset: {preset_path.name} · "
+                f"departure {scenario['departure_date']} · "
+                f"transfer {scenario['transfer_days']:.1f} days.\n"
+                "Select Run Lunar Mission Simulation to see the result."
+            ),
+        )
+
     def _load_reference(self, spacecraft):
         self.spacecraft = spacecraft
         self.selected_id = None
@@ -998,28 +1114,7 @@ class SpacecraftDesignerUI:
                 title += " (surface impact predicted)"
         else:
             title = "MISSION FAILED — propagated path missed the Moon"
-        closest = (
-            f"{result.closest_approach.to_value('km'):,.0f} km"
-            if result.closest_approach is not None
-            else "not propagated"
-        )
-        details = (
-            f"TLI required: {result.tli_delta_v.to_value('km/s'):.2f} km/s  |  "
-            f"Delta-v remaining after Earth-ascent allowance: "
-            f"{max(0.0, result.available_delta_v.to_value('km/s') - 9.4):.2f} km/s\n"
-            f"Transfer: {result.transfer_time.to_value('day'):.2f} days  |  "
-            f"Arrival: {result.arrival_time}\n"
-            f"Closest approach: {closest}  |  "
-            f"Lunar SOI: {result.lunar_sphere_of_influence.to_value('km'):,.0f} km\n"
-            f"Ephemeris: {result.data_source}\n"
-            + (
-                "Surface intersection predicted; this is not a landing simulation.\n"
-                if result.surface_impact
-                else ""
-            )
-            + ("Reasons: " + " ".join(result.reasons) if result.reasons else "")
-        )
-        self._set_lunar_status(title, details)
+        self._set_lunar_status(title, lunar_mission_report(result, self.analysis))
 
     def _invalidate_mission_result(self, sender=None, app_data=None, user_data=None):
         self._cancel_mission()
