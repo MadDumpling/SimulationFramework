@@ -167,14 +167,21 @@ def test_demo_design_clears_the_precheck_and_is_labelled_illustrative(simulation
     assert any(isinstance(p, Engine) for p in craft.components)
 
 
-def test_catalog_starter_design_fails_the_check_so_the_default_always_fails():
-    # The shipped starter is a small illustrative vehicle: it cannot go to the Moon,
-    # and the readout must say so rather than leave the user guessing.
+def test_default_preset_clears_the_simulation_precheck_and_is_illustrative(
+    simulation_passes_precheck,
+):
+    # The default opens as the lunar demo and must pass the same vehicle gates
+    # that the trajectory simulation applies before it queries the ephemeris.
     from spacecraft.presets import load_spacecraft
 
     craft = load_spacecraft(designer_module.DEFAULT_PRESET)
+    analysis = analyze_spacecraft(craft)
 
-    assert not o.lunar_prescreen(analyze_spacecraft(craft)).ready
+    assert craft.name.startswith("Lunar-capable demo")
+    assert simulation_passes_precheck(craft)
+    assert o.lunar_prescreen(analysis).ready
+    assert analysis.twr > 1.0 and analysis.delta_v > 12_600.0
+    assert all(part.provenance.quality == "illustrative" for part in craft.components)
 
 
 # -- failure banner gives numbers -------------------------------------------------
