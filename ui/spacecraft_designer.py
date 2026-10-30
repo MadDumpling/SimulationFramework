@@ -1,6 +1,7 @@
-"""DearPyGui editor panel for the initial spacecraft-design MVP."""
+"""DearPyGui configurator panel; the 3D vehicle is drawn by the OpenGL viewport."""
 
 from datetime import datetime, timezone
+from uuid import uuid4
 from pathlib import Path
 
 import dearpygui.dearpygui as dpg
@@ -12,12 +13,12 @@ from spacecraft.analysis import (
     assess_mission,
 )
 from spacecraft.components import (
-    Component,
     Engine,
     FuelTank,
-    Payload,
     PowerSystem,
     component_from_catalog,
+    component_from_dict,
+    component_to_dict,
 )
 from spacecraft.presets import load_spacecraft, save_spacecraft
 from spacecraft.vehicle import Spacecraft
@@ -32,7 +33,7 @@ DEFAULT_PRESET = (
 
 
 class SpacecraftDesignerUI:
-    """Editable component assembly, analysis, persistence, and schematic view."""
+    """Editable component assembly, analysis, and persistence."""
 
     def __init__(self, events, preset_path=DEFAULT_PRESET):
         self.events = events
@@ -41,6 +42,7 @@ class SpacecraftDesignerUI:
         self.mission_id = "leo"
         self.analysis = analyze_spacecraft(self.spacecraft)
         self.mission_result: MissionSimulationResult | None = None
+        self.selected_id: str | None = None
         self.built = False
 
     def _load_starting_spacecraft(self):
@@ -95,6 +97,22 @@ class SpacecraftDesignerUI:
                 dpg.add_button(label="Save Design", callback=self.save)
                 dpg.add_button(label="Load Design", callback=self.load)
                 dpg.add_button(label="Clear Assembly", callback=self.clear)
+            dpg.add_text("Viewport", bullet=True)
+            dpg.add_slider_float(
+                label="Exploded view",
+                default_value=0.0,
+                min_value=0.0,
+                max_value=1.0,
+                width=220,
+                callback=self.set_explode,
+            )
+            with dpg.group(horizontal=True):
+                dpg.add_checkbox(
+                    label="Grid",
+                    default_value=True,
+                    callback=self.set_grid,
+                )
+                dpg.add_button(label="Reset Camera", callback=self.reset_camera)
             dpg.add_separator()
             dpg.add_text("Assembly Components")
             dpg.add_group(tag="spacecraft_components_container")
@@ -150,13 +168,6 @@ class SpacecraftDesignerUI:
             )
             dpg.add_text("Not simulated", tag="lunar_reachability_status", wrap=560)
             dpg.add_text("", tag="lunar_reachability_details", wrap=560)
-            dpg.add_separator()
-            dpg.add_text("Stack schematic (not to scale)")
-            dpg.add_drawlist(
-                width=560,
-                height=300,
-                tag="spacecraft_schematic",
-            )
 
         self.built = True
         self._rebuild_component_controls()
@@ -169,7 +180,63 @@ class SpacecraftDesignerUI:
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._invalidate_mission_result()
         self._rebuild_component_controls()
+        self.select_component(component.id)
         self.refresh()
+
+    SELECTED_COLOR = (255, 160, 40)
+    NORMAL_COLOR = (255, 255, 255)
+
+    def select_component(self, component_id):
+        """Select a component (or None) and mirror it in list and viewport."""
+        if component_id is not None and self.spacecraft.get_component(component_id) is None:
+            component_id = None
+        if component_id == self.selected_id:
+            return
+        self.selected_id = component_id
+        self._apply_selection_style()
+        self.events.publish("component.selected", component_id)
+
+    def select_component_callback(self, sender, app_data, user_data):
+        self.select_component(user_data)
+
+    def _apply_selection_style(self):
+        if not self.built:
+            return
+        for component in self.spacecraft.components:
+            tag = f"spacecraft_component_label_{component.id}"
+            if dpg.does_item_exist(tag):
+                dpg.configure_item(
+                    tag,
+                    color=(
+                        self.SELECTED_COLOR
+                        if component.id == self.selected_id
+                        else self.NORMAL_COLOR
+                    ),
+                )
+
+    def duplicate_component(self, sender, app_data, user_data):
+        original = self.spacecraft.get_component(user_data)
+        if original is None:
+            return
+        data = component_to_dict(original)
+        data["id"] = str(uuid4())
+        copy = component_from_dict(data)
+        self.spacecraft.add_component(copy)
+        self.events.publish("component.added", copy)
+        self.events.publish("spacecraft.updated", self.spacecraft)
+        self._invalidate_mission_result()
+        self._rebuild_component_controls()
+        self.select_component(copy.id)
+        self.refresh()
+
+    def set_explode(self, sender, app_data, user_data):
+        self.events.publish("view.explode", float(app_data))
+
+    def set_grid(self, sender, app_data, user_data):
+        self.events.publish("view.grid", bool(app_data))
+
+    def reset_camera(self, sender=None, app_data=None, user_data=None):
+        self.events.publish("view.reset_camera")
 
     def remove_component(self, sender, app_data, user_data):
         removed = self.spacecraft.remove_component(user_data)
@@ -181,6 +248,8 @@ class SpacecraftDesignerUI:
             self.refresh()
 
     def _rebuild_component_controls(self):
+        if self.spacecraft.get_component(self.selected_id) is None:
+            self.selected_id = None
         if not self.built:
             return
         dpg.delete_item("spacecraft_components_container", children_only=True)
@@ -218,6 +287,7 @@ class SpacecraftDesignerUI:
                     input_options["max_clamped"] = True
                 dpg.add_input_float(**input_options)
             dpg.add_separator(parent="spacecraft_components_container")
+        self._apply_selection_style()
 
     @staticmethod
     def _editable_fields(component):
@@ -423,7 +493,6 @@ class SpacecraftDesignerUI:
                 dpg.set_value(tag, value)
         if dpg.does_item_exist("spacecraft_name_input"):
             dpg.set_value("spacecraft_name_input", self.spacecraft.name)
-        self._draw_schematic()
         self.events.publish("analysis.updated", analysis, mission)
 
     @staticmethod
@@ -437,109 +506,3 @@ class SpacecraftDesignerUI:
             f"{mission.mission.name}: NOT MET · "
             + " ".join(mission.reasons)
         )
-
-    def _draw_schematic(self):
-        dpg.delete_item("spacecraft_schematic", children_only=True)
-        dpg.draw_rectangle(
-            (0, 0),
-            (560, 300),
-            parent="spacecraft_schematic",
-            fill=(20, 28, 40, 255),
-            color=(55, 70, 90, 255),
-        )
-        dpg.draw_text(
-            (16, 12),
-            self.spacecraft.name,
-            parent="spacecraft_schematic",
-            color=(220, 230, 245, 255),
-            size=16,
-        )
-        stack = sorted(
-            self.spacecraft.components,
-            key=self._stack_order,
-        )
-        if not stack:
-            dpg.draw_text(
-                (190, 145),
-                "Add components to assemble a vehicle",
-                parent="spacecraft_schematic",
-                color=(160, 175, 195, 255),
-            )
-            return
-
-        center_x = 280
-        bottom_y = 270
-        available_height = 220
-        segment_height = min(50, available_height / len(stack))
-        for index, component in enumerate(stack):
-            y1 = bottom_y - index * segment_height
-            y0 = y1 - segment_height + 2
-            width = self._schematic_width(component)
-            x0 = center_x - width / 2
-            x1 = center_x + width / 2
-            color = self._schematic_color(component)
-            dpg.draw_rectangle(
-                (x0, y0),
-                (x1, y1),
-                parent="spacecraft_schematic",
-                fill=color,
-                color=(220, 230, 245, 255),
-                rounding=3,
-            )
-            label = f"{component.name} · {component.dry_mass:,.0f} kg"
-            dpg.draw_text(
-                (x1 + 12, y0 + 8),
-                label,
-                parent="spacecraft_schematic",
-                color=(220, 230, 245, 255),
-            )
-        dpg.draw_line(
-            (center_x, 44),
-            (center_x, 52),
-            parent="spacecraft_schematic",
-            color=(120, 180, 240, 255),
-            thickness=2,
-        )
-        dpg.draw_text(
-            (16, 275),
-            "Ideal single-stage model; schematic not to scale",
-            parent="spacecraft_schematic",
-            color=(150, 165, 185, 255),
-            size=12,
-        )
-
-    @staticmethod
-    def _stack_order(component: Component):
-        if isinstance(component, Engine):
-            return 0
-        if isinstance(component, FuelTank):
-            return 1
-        if isinstance(component, PowerSystem):
-            return 2
-        if isinstance(component, Payload):
-            return 3
-        return 4
-
-    @staticmethod
-    def _schematic_width(component: Component):
-        if isinstance(component, Engine):
-            return 56
-        if isinstance(component, FuelTank):
-            return 94
-        if isinstance(component, Payload):
-            return 68
-        if isinstance(component, PowerSystem):
-            return 112
-        return 70
-
-    @staticmethod
-    def _schematic_color(component: Component):
-        if isinstance(component, Engine):
-            return (185, 95, 55, 255)
-        if isinstance(component, FuelTank):
-            return (95, 125, 165, 255)
-        if isinstance(component, Payload):
-            return (125, 155, 110, 255)
-        if isinstance(component, PowerSystem):
-            return (130, 105, 175, 255)
-        return (110, 120, 130, 255)

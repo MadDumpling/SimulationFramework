@@ -1,56 +1,27 @@
-import taichi as ti
-
-from plugin_loader import load_simulations
-
 from ui import (
     Application,
-    SimulationApplication,
+    DesignerApplication,
 )
 
 
-def initialize_taichi():
-
-    try:
-        ti.init(
-            arch=ti.gpu,
-        )
-
-    except RuntimeError as error:
-
-        print(
-            f"GPU initialization failed ({error}). "
-            "Falling back to CPU."
-        )
-
-        ti.init(
-            arch=ti.cpu,
-        )
-
-
 def main():
-
-    initialize_taichi()
-
-    load_simulations()
 
     app = Application()
 
     app.initialize()
 
-    simulation_app = (
-        SimulationApplication()
-    )
+    designer_app = DesignerApplication()
 
-    simulation_app.initialize()
+    designer_app.initialize()
 
     while (
-        simulation_app.running
+        designer_app.running
         and app.running()
     ):
 
-        simulation_app.update()
+        designer_app.update()
 
-        simulation_app.render()
+        designer_app.render()
 
         app.render()
 
