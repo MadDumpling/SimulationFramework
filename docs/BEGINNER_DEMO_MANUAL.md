@@ -148,6 +148,11 @@ flight effects described in section 7.
 7. Explain that this scenario demonstrates modeled lunar sphere-of-influence
    entry without an intersection with the Moon's mean-radius surface for these
    inputs. It does not demonstrate lunar orbit or a safe landing.
+8. Leave **Demo sounds** checked to hear a synthesized takeoff cue and a
+   success or failure sound when the mission run returns. Uncheck it to mute
+   the cues. A selected flag is displayed beside the spacecraft in the landing
+   animation; this is also illustrative and does not mean the solver modeled
+   a touchdown.
 
 The example inputs are fixed for the showcase. If you change the date or
 transfer time, use the new on-screen report as the result; don't promise the

@@ -18,6 +18,7 @@ from viewport import SpacecraftViewport
 from viewport import flight
 
 from .dpg_input_source import DpgInputSource
+from .audio_cues import AudioCues
 from .layout import create_dockspace
 from . import mission_outcome as outcome
 from .spacecraft_designer import SpacecraftDesignerUI
@@ -32,6 +33,7 @@ class DesignerApplication:
         self.events = EventBus()
         self.renderer = OpenGLRenderer()
         self.performance = PerformanceMonitor()
+        self.audio = AudioCues()
         self.designer = SpacecraftDesignerUI(self.events)
         self.viewport = SpacecraftViewport(lambda: self.designer.spacecraft)
         self.input_source = None
@@ -56,6 +58,7 @@ class DesignerApplication:
         self.events.subscribe("mission.failed", self._on_mission_failed)
         self.events.subscribe("mission.cancelled", self._reset_flight)
         self.events.subscribe("flight.reset", self._reset_flight)
+        self.events.subscribe("audio.enabled", self._on_audio_enabled)
         self.designer.background_missions = True
 
     @property
@@ -65,8 +68,12 @@ class DesignerApplication:
     def initialize(self):
         create_dockspace()
         self.designer.build()
+        self._set_audio_status(self.audio.status_message)
         self.input_source = DpgInputSource()
         self.viewport.invalidate(reframe=True)
+
+    def shutdown(self):
+        self.audio.close()
 
     # ------------------------------------------------------------------
     # Events
@@ -88,7 +95,23 @@ class DesignerApplication:
     def _reset_flight(self):
         self._held_banner = None
         self.viewport.reset_flight()
+        self.audio.stop()
         self._set_banner(" ", outcome.BLUE)
+
+    def _set_audio_status(self, message):
+        warning = message.startswith("Demo audio unavailable") or message.startswith(
+            "Demo audio could not play"
+        )
+        self.designer.set_audio_status(message, warning=warning)
+
+    def _play_audio(self, cue):
+        error = self.audio.play(cue)
+        if error is not None:
+            self._set_audio_status(error)
+
+    def _on_audio_enabled(self, enabled):
+        self.audio.set_enabled(enabled)
+        self._set_audio_status(self.audio.status_message)
 
     def _set_banner(self, text, color):
         if dpg.does_item_exist("mission_banner"):
@@ -98,6 +121,8 @@ class DesignerApplication:
     def _on_mission_started(self, liftoff=True, has_thrust=True):
         self._held_banner = None
         self.viewport.start_flight(liftoff, has_thrust)
+        if liftoff and has_thrust:
+            self._play_audio("takeoff")
         self._mission_started_at = time.monotonic()
         self._banner_second = None
         if liftoff:
@@ -126,9 +151,10 @@ class DesignerApplication:
             self._set_banner(*outcome.running_banner(elapsed))
 
     def _on_mission_completed(self, result):
+        verdict = outcome.flight_outcome(result)
+        self._play_audio("success" if verdict == flight.LAND else "failure")
         if self.viewport.flight.state == flight.NO_LIFTOFF:
             return  # the vehicle never left the pad; the banner already says why
-        verdict = outcome.flight_outcome(result)
         self.viewport.finish_flight(verdict)
         banner = outcome.verdict_banner(result, verdict)
         if self.viewport.flight.pending:
@@ -140,6 +166,7 @@ class DesignerApplication:
         # An error is not a verdict on the vehicle: return to the pad and say so.
         self._held_banner = None
         self.viewport.reset_flight()
+        self.audio.stop()
         self._set_banner(*outcome.error_banner(error))
 
     def _on_component_selected(self, component_id):
