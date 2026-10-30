@@ -42,13 +42,41 @@ The product's actual success goal is a safe lunar touchdown. See
 definition, current-model limits, required real-world data, and implementation
 roadmap.
 
+## Vehicle definition
+
+Every component and the vehicle itself carry a **data provenance** record:
+`quality` (`measured`, `published`, `estimated`, or `illustrative`), `source`,
+`revision`, `uncertainty_pct`, and units. `measured`/`published` data must cite a
+source. Everything built from the catalog is `illustrative`.
+
+Optional values default to `None`, which means *unknown*, never zero. The
+**Vehicle data readiness** panel lists what is unknown or untraceable and labels
+the vehicle `PROTOTYPE DATA` until nothing blocks and every part cites real data.
+Definitions cover:
+
+- Mass: dry, loaded and residual propellant, tank capacity, stage assignment.
+- Engines: vacuum thrust/Isp, sea-level thrust or exit area, chamber pressure,
+  throttle range and curve, ignition/restart limits, burn duration, minimum
+  impulse, tail-off, gimbal angle and rate. `Engine.thrust_at(throttle,
+  ambient_pressure_pa)`, `mass_flow_at` and `chamber_pressure_at` evaluate the
+  model and raise `MissingDataError` rather than guess.
+- Geometry: component envelopes, centre of mass and inertia, landing-gear contact
+  envelope, allowable tilt and angular rate.
+
+The panel edits stage, data quality/source and residual propellant. The rest is
+set in the JSON design file (schema v2; v1 files still load).
+
 ## Project structure
 
 ```text
 app.py                   Entry point
 spacecraft/              Domain model (no UI/GL imports)
-  components.py          Engine, FuelTank, Payload, PowerSystem + catalog
-  vehicle.py             Spacecraft assembly
+  components.py          Engine, FuelTank, Payload, PowerSystem + illustrative catalog
+  propulsion.py          Throttle, ignition/restart, gimbal data
+  provenance.py          Data source/quality/uncertainty records
+  vehicle.py             Spacecraft assembly, landing gear, attitude limits
+  mass_properties.py     Mass, centre of mass, inertia, static tip-over angle
+  readiness.py           Reports missing/untraceable vehicle data
   analysis.py            Ideal performance and mission budgets
   geometry.py            3D layout: primitive meshes + per-part transforms
   mission.py, lunar.py   Lambert transfer + ephemeris propagation

@@ -1,5 +1,6 @@
 """DearPyGui spacecraft configurator panel for the 3D OpenGL viewport."""
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -22,6 +23,8 @@ from spacecraft.components import (
     component_to_dict,
 )
 from spacecraft.mission import MissionSimulationResult, run_lunar_flyby_simulation
+from spacecraft.provenance import QUALITIES
+from spacecraft.readiness import assess_definition
 from spacecraft.presets import load_spacecraft, save_spacecraft
 from spacecraft.vehicle import Spacecraft
 
@@ -137,6 +140,10 @@ class SpacecraftDesignerUI:
             )
             dpg.add_text("Mission status", tag="spacecraft_mission_status")
             dpg.add_text("", tag="spacecraft_warnings", wrap=560)
+            dpg.add_separator()
+            dpg.add_text("Vehicle data readiness", bullet=True)
+            dpg.add_text("", tag="spacecraft_data_readiness", wrap=560)
+            dpg.add_text("", tag="spacecraft_data_message", wrap=560, color=(255, 120, 100))
             dpg.add_separator()
             dpg.add_text("Lunar mission screening · JPL DE440s", bullet=True)
             dpg.add_input_text(
@@ -279,7 +286,7 @@ class SpacecraftDesignerUI:
             for field_name, label, minimum, maximum in self._editable_fields(component):
                 options = {
                     "label": label,
-                    "default_value": getattr(component, field_name),
+                    "default_value": getattr(component, field_name) or 0.0,
                     "min_value": minimum,
                     "min_clamped": True,
                     "width": 220,
@@ -293,6 +300,7 @@ class SpacecraftDesignerUI:
                     options["max_value"] = maximum
                     options["max_clamped"] = True
                 dpg.add_input_float(**options)
+            self._add_definition_controls(component)
             dpg.add_separator(parent="spacecraft_components_container")
         self._apply_selection_style()
 
@@ -312,6 +320,7 @@ class SpacecraftDesignerUI:
                 [
                     ("capacity", "Tank capacity (kg)", component.fuel_mass, None),
                     ("fuel_mass", "Loaded propellant (kg)", 0.0, component.capacity),
+                    ("residual_propellant", "Residual propellant (kg)", 0.0, None),
                 ]
             )
         elif isinstance(component, PowerSystem):
@@ -322,6 +331,77 @@ class SpacecraftDesignerUI:
                 ]
             )
         return fields
+
+    def _add_definition_controls(self, component):
+        """Stage, data-quality, and source inputs for one component."""
+        parent = "spacecraft_components_container"
+        dpg.add_input_int(
+            label="Stage",
+            default_value=component.stage,
+            min_value=1,
+            min_clamped=True,
+            width=120,
+            parent=parent,
+            callback=self.set_stage,
+            user_data=component.id,
+        )
+        dpg.add_combo(
+            items=list(QUALITIES),
+            default_value=component.provenance.quality,
+            label="Data quality",
+            width=160,
+            parent=parent,
+            callback=self.set_data_quality,
+            user_data=component.id,
+            tag=f"spacecraft_{component.id}_quality",
+        )
+        dpg.add_input_text(
+            label="Data source / revision",
+            default_value=component.provenance.source,
+            width=220,
+            parent=parent,
+            on_enter=True,
+            callback=self.set_data_source,
+            user_data=component.id,
+            tag=f"spacecraft_{component.id}_source",
+        )
+
+    def set_stage(self, sender, app_data, user_data):
+        component = self.spacecraft.get_component(user_data)
+        if component is None:
+            return
+        component.stage = max(1, int(app_data))
+        self._invalidate_mission_result()
+        self.refresh()
+
+    def _update_provenance(self, component_id, **changes):
+        component = self.spacecraft.get_component(component_id)
+        if component is None:
+            return
+        try:
+            component.provenance = replace(component.provenance, **changes)
+        except ValueError as error:
+            self._set_data_message(f"{component.name}: {error}")
+            for key, tag in (
+                ("quality", f"spacecraft_{component_id}_quality"),
+                ("source", f"spacecraft_{component_id}_source"),
+            ):
+                if dpg.does_item_exist(tag):
+                    dpg.set_value(tag, getattr(component.provenance, key))
+            return
+        self._set_data_message("")
+        self.refresh()
+
+    def set_data_quality(self, sender, app_data, user_data):
+        self._update_provenance(user_data, quality=app_data)
+
+    def set_data_source(self, sender, app_data, user_data):
+        self._update_provenance(user_data, source=str(app_data).strip())
+
+    @staticmethod
+    def _set_data_message(message):
+        if dpg.does_item_exist("spacecraft_data_message"):
+            dpg.set_value("spacecraft_data_message", message)
 
     def update_component(self, sender, app_data, user_data):
         component_id, field_name = user_data
@@ -492,6 +572,7 @@ class SpacecraftDesignerUI:
             ),
             "spacecraft_mission_status": self._mission_text(mission),
             "spacecraft_warnings": "\n".join(analysis.warnings),
+            "spacecraft_data_readiness": assess_definition(self.spacecraft).summary(),
         }
         for tag, value in values.items():
             if dpg.does_item_exist(tag):

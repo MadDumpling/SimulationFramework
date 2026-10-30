@@ -144,3 +144,36 @@ def test_view_controls_publish_events():
     ui.reset_camera()
 
     assert seen == [("explode", 0.5), ("grid", False), ("reset", None)]
+
+
+def test_data_quality_and_source_edits_validate_provenance(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(c for c in ui.spacecraft.components if isinstance(c, Engine))
+
+    ui.set_data_quality(None, "published", engine.id)  # no source yet: rejected
+    assert engine.provenance.quality != "published"
+
+    ui.set_data_source(None, "Datasheet X rev B", engine.id)
+    ui.set_data_quality(None, "published", engine.id)
+    assert engine.provenance.quality == "published"
+    assert engine.provenance.source == "Datasheet X rev B"
+
+
+def test_stage_edit_updates_component(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    tank = next(c for c in ui.spacecraft.components if isinstance(c, FuelTank))
+
+    ui.set_stage(None, 2, tank.id)
+
+    assert tank.stage == 2
+
+
+def test_residual_propellant_edit_changes_usable_propellant(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    tank = next(c for c in ui.spacecraft.components if isinstance(c, FuelTank))
+    before = ui.analysis.fuel_mass
+
+    ui.update_component("sender", 500.0, (tank.id, "residual_propellant"))
+
+    assert tank.residual_propellant == 500.0
+    assert ui.analysis.fuel_mass == before - 500.0

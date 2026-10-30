@@ -43,6 +43,8 @@ For each stage/component, use traceable configuration data for:
 - Vehicle geometry, center of mass/inertia where available, landing gear/contact envelope, and allowable attitude/rates.
 - Data source, date/revision, units, uncertainty, and whether values are measured, published, estimated, or illustrative.
 
+**Status:** the data model, provenance tracking, engine operating model (throttle, chamber and ambient pressure), ignition/gimbal limits, mass properties, landing-gear/attitude envelope, and a data-readiness report are implemented (`spacecraft/components.py`, `propulsion.py`, `provenance.py`, `mass_properties.py`, `readiness.py`). No real flight-hardware dataset has been entered yet; all shipped values are `illustrative`.
+
 Do not label catalog/example values as real flight hardware data. Public sources may not expose complete engine maps, residuals, or mass properties for a specific vehicle; missing data must remain an explicit uncertainty or block a high-confidence claim.
 
 ### Phase 2 — Model Earth departure and lunar transfer as powered flight

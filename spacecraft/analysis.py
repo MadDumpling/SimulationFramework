@@ -55,7 +55,8 @@ def analyze_spacecraft(spacecraft: Spacecraft) -> SpacecraftAnalysis:
     """Calculate an ideal single-stage performance estimate for an assembly.
 
     This uses the Tsiolkovsky rocket equation and excludes drag, gravity losses,
-    trajectory effects, residual propellant, and stage separation.
+    trajectory effects, and stage separation. Declared residual (unusable)
+    propellant is carried as mass but not burned; unknown residual counts as 0.
     """
     result = SpacecraftAnalysis()
     engines = [part for part in spacecraft.components if isinstance(part, Engine)]
@@ -93,7 +94,7 @@ def analyze_spacecraft(spacecraft: Spacecraft) -> SpacecraftAnalysis:
                     "Some tank propellant does not match the installed engine fuel type."
                 )
 
-            result.fuel_mass = sum(tank.fuel_mass for tank in compatible_tanks)
+            result.fuel_mass = sum(tank.usable_propellant for tank in compatible_tanks)
             if result.fuel_mass > 0.0:
                 result.thrust = sum(engine.thrust for engine in engines)
                 mass_flow = sum(
