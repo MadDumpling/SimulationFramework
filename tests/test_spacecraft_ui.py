@@ -1,24 +1,20 @@
 from astropy import units as u
 
+import ui.spacecraft_designer as designer_module
 from core.event_bus import EventBus
 from spacecraft.analysis import MISSION_PROFILES
-from spacecraft.components import Engine, FuelTank, Payload, PowerSystem
+from spacecraft.components import Engine, FuelTank, Payload
+from spacecraft.mission import MissionSimulationResult
+from spacecraft.placement import Placement
 from spacecraft.presets import load_spacecraft
 from ui.spacecraft_designer import DEFAULT_PRESET, SpacecraftDesignerUI
-import ui.spacecraft_designer as designer_module
-from spacecraft.mission import MissionSimulationResult
 
 
-def test_starter_preset_contains_first_mvp_component_categories():
+def test_default_preset_contains_apollo_descent_component_categories():
     craft = load_spacecraft(DEFAULT_PRESET)
 
-    assert craft.name == "Chemical Explorer Concept"
-    assert [type(part) for part in craft.components] == [
-        Engine,
-        FuelTank,
-        Payload,
-        PowerSystem,
-    ]
+    assert craft.name == "Apollo Lunar Module (descent)"
+    assert {Engine, FuelTank, Payload} <= {type(part) for part in craft.components}
 
 
 def test_designer_callbacks_add_remove_parts_and_publish_events(tmp_path):
@@ -115,6 +111,77 @@ def test_adding_a_component_selects_it(tmp_path):
     ui.add_component(None, None, "engine")
 
     assert ui.selected_id == ui.spacecraft.components[-1].id
+
+
+def test_placement_editor_supports_offsets_and_node_attachments(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(c for c in ui.spacecraft.components if isinstance(c, Engine))
+    tank = next(c for c in ui.spacecraft.components if isinstance(c, FuelTank))
+    attach_label = f"Attach to {tank.name} [{tank.id[:8]}]"
+    label_to_mode = {
+        "Automatic layout": "auto",
+        "Free placement": "root",
+        attach_label: tank.id,
+    }
+
+    ui.set_component_placement_mode(
+        None,
+        attach_label,
+        (engine.id, label_to_mode),
+    )
+    ui.set_component_placement_value(
+        None,
+        0.75,
+        (engine.id, "offset_x"),
+    )
+    ui.set_component_placement_value(
+        None,
+        "mount",
+        (engine.id, "parent_node"),
+    )
+
+    assert engine.placement.parent_id == tank.id
+    assert engine.placement.offset == (0.75, 0.0, 0.0)
+    assert engine.placement.parent_node == "mount"
+
+
+def test_placement_editor_rejects_attachment_cycles(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(c for c in ui.spacecraft.components if isinstance(c, Engine))
+    tank = next(c for c in ui.spacecraft.components if isinstance(c, FuelTank))
+    tank.placement = Placement(parent_id=engine.id)
+    attach_label = f"Attach to {tank.name} [{tank.id[:8]}]"
+
+    ui.set_component_placement_mode(
+        None,
+        attach_label,
+        (engine.id, {attach_label: tank.id}),
+    )
+
+    assert engine.placement is None
+
+
+def test_engine_throttle_range_is_editable_as_percent(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(c for c in ui.spacecraft.components if isinstance(c, Engine))
+
+    ui.update_component("sender", 10.0, (engine.id, "throttle_min_fraction"))
+    ui.update_component("sender", 100.0, (engine.id, "throttle_max_fraction"))
+
+    assert engine.throttle.min_fraction == 0.1
+    assert engine.throttle.max_fraction == 1.0
+
+
+def test_component_name_and_com_location_are_editable(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(c for c in ui.spacecraft.components if isinstance(c, Engine))
+
+    ui.rename_component("sender", "Main engine", engine.id)
+    ui.set_component_com_defined("sender", True, engine.id)
+    ui.set_component_com_value("sender", 1.25, (engine.id, "x"))
+
+    assert engine.name == "Main engine"
+    assert engine.com_m == (1.25, 0.0, 0.0)
 
 
 def test_duplicate_copies_properties_with_a_new_id(tmp_path):

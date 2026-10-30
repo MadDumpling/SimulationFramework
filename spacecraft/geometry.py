@@ -8,9 +8,9 @@ Sizes are derived from component properties with illustrative densities and
 scaling rules. The result is a readable visualization, not engineering CAD.
 """
 
+import math
 from dataclasses import dataclass, field, replace
 from functools import cache
-import math
 
 import numpy as np
 
@@ -249,6 +249,7 @@ def _engine_positions(engines: list[Engine]) -> list[tuple[float, float]]:
 def layout_spacecraft(
     spacecraft: Spacecraft | None,
     explode: float = 0.0,
+    include_analysis: bool = True,
 ) -> VehicleLayout:
     """Arrange components bottom-to-top: engines, tanks, power bus, payload, nose.
 
@@ -372,7 +373,8 @@ def layout_spacecraft(
     layout.height = y
     layout.extent = extent
 
-    placed = _placement_transforms(spacecraft)
+    default_centres = _component_default_centres(parts)
+    placed = _placement_transforms(spacecraft, default_centres)
     if placed:
         layout.parts = [
             replace(
@@ -387,20 +389,22 @@ def layout_spacecraft(
             else part
             for part in layout.parts
         ]
+        parts = layout.parts
 
-    properties = mass_properties(spacecraft)
-    if properties.com_m is not None:
-        com_x, com_y, com_z = properties.com_m
-        marker_radius = max(0.08, min(radius * 0.09, 0.35))
-        parts.append(
-            PartVisual(
-                None,
-                "sphere",
-                translate(com_x, com_y, com_z)
-                @ scale(marker_radius, marker_radius, marker_radius),
-                (1.0, 0.78, 0.12),
+    if include_analysis:
+        properties = mass_properties(spacecraft)
+        if properties.com_m is not None:
+            com_x, com_y, com_z = properties.com_m
+            marker_radius = max(0.08, min(radius * 0.09, 0.35))
+            parts.append(
+                PartVisual(
+                    None,
+                    "sphere",
+                    translate(com_x, com_y, com_z)
+                    @ scale(marker_radius, marker_radius, marker_radius),
+                    (1.0, 0.78, 0.12),
+                )
             )
-        )
 
     if spacecraft.landing_gear is not None:
         footprint = spacecraft.landing_gear.footprint_radius_m
@@ -416,7 +420,49 @@ def layout_spacecraft(
     return layout
 
 
-def _placement_transforms(spacecraft: Spacecraft) -> dict[str, np.ndarray]:
+def _component_default_centres(parts: list[PartVisual]) -> dict[str, np.ndarray]:
+    local_bounds = {
+        "box": ((-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)),
+        "cylinder": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
+        "bell": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
+        "nose": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
+        "sphere": ((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0)),
+    }
+    component_parts = {}
+    for part in parts:
+        if part.component_id is not None:
+            component_parts.setdefault(part.component_id, []).append(part)
+
+    centres = {}
+    for component_id, visuals in component_parts.items():
+        primary = [part for part in visuals if part.primitive != "box"] or visuals
+        transformed = []
+        for part in primary:
+            low, high = local_bounds[part.primitive]
+            corners = np.array(
+                [
+                    (x, y, z, 1.0)
+                    for x in (low[0], high[0])
+                    for y in (low[1], high[1])
+                    for z in (low[2], high[2])
+                ],
+                dtype=np.float32,
+            )
+            transformed.append((part.model @ corners.T).T[:, :3])
+        points = np.concatenate(transformed)
+        centres[component_id] = (points.min(axis=0) + points.max(axis=0)) / 2.0
+    return centres
+
+
+def component_centers(spacecraft: Spacecraft) -> dict[str, np.ndarray]:
+    """Return visual component centres in vehicle coordinates."""
+    return _component_default_centres(layout_spacecraft(spacecraft).parts)
+
+
+def _placement_transforms(
+    spacecraft: Spacecraft,
+    default_centres: dict[str, np.ndarray] | None = None,
+) -> dict[str, np.ndarray]:
     """Resolve explicit part attachments to vehicle-frame transforms.
 
     Node positions are approximate envelopes from dimensions, with the current
@@ -433,14 +479,13 @@ def _placement_transforms(spacecraft: Spacecraft) -> dict[str, np.ndarray]:
     if not placed_parts:
         return {}
 
-    defaults = layout_spacecraft(_without_placements(spacecraft), explode=0.0)
-    default_centres: dict[str, np.ndarray] = {}
-    for part_visual in defaults.parts:
-        if part_visual.component_id is None or part_visual.component_id in default_centres:
-            continue
-        default_centres[part_visual.component_id] = (
-            part_visual.model @ np.array([0.0, 0.5, 0.0, 1.0], dtype=np.float32)
-        )[:3]
+    if default_centres is None:
+        defaults = layout_spacecraft(
+            _without_placements(spacecraft),
+            explode=0.0,
+            include_analysis=False,
+        )
+        default_centres = _component_default_centres(defaults.parts)
 
     transforms: dict[str, np.ndarray] = {}
     visiting: set[str] = set()
@@ -479,7 +524,7 @@ def _placement_transforms(spacecraft: Spacecraft) -> dict[str, np.ndarray]:
                 @ radial_rotation
                 @ translate(*placement.offset)
             )
-            result = target @ local_rotation @ translate(-child_node)
+            result = target @ local_rotation @ translate(*(-child_node))
 
         visiting.remove(component_id)
         transforms[component_id] = result.astype(np.float32)
@@ -488,6 +533,39 @@ def _placement_transforms(spacecraft: Spacecraft) -> dict[str, np.ndarray]:
     for component_id in placed_parts:
         resolve(component_id)
     return transforms
+
+
+def component_com_positions(spacecraft: Spacecraft) -> dict[str, tuple[float, float, float]]:
+    """Return known component COM points after applying explicit placements."""
+    known = {
+        component.id: component.com_m
+        for component in spacecraft.components
+        if component.com_m is not None
+    }
+    if not known or not any(
+        component.placement is not None
+        for component in spacecraft.components
+        if component.id in known
+    ):
+        return known
+
+    defaults = layout_spacecraft(
+        _without_placements(spacecraft),
+        explode=0.0,
+        include_analysis=False,
+    )
+    default_centres = _component_default_centres(defaults.parts)
+    transforms = _placement_transforms(spacecraft, default_centres)
+    positions = {}
+    for component_id, com_m in known.items():
+        transform = transforms.get(component_id)
+        if transform is None:
+            positions[component_id] = com_m
+            continue
+        relative = np.asarray(com_m) - default_centres[component_id]
+        position = transform @ np.array((*relative, 1.0), dtype=np.float32)
+        positions[component_id] = tuple(float(value) for value in position[:3])
+    return positions
 
 
 def _without_placements(spacecraft: Spacecraft) -> Spacecraft:
@@ -516,7 +594,7 @@ def _node_local(component: Component, node: str):
     if node == "side":
         return np.array([core_radius_for(component), 0.0, 0.0])
     if node == "mount":
-        return center
+        return np.zeros(3)
     raise ValueError(f"Unsupported attachment node: {node}")
 
 

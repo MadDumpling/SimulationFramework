@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from spacecraft.mission import EARTH_ASCENT_DELTA_V, TYPICAL_TLI_DELTA_V
 from viewport import flight
 
+from .mission_timeline import mission_timeline as mission_timeline
+
 GREEN = (110, 220, 130)
 RED = (255, 105, 90)
 AMBER = (255, 190, 80)

@@ -345,6 +345,7 @@ def test_banners_state_the_cause_of_each_failure():
 @pytest.fixture
 def designer(monkeypatch, tmp_path):
     ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "d.json")
+    ui.load_lunar_demo()
     monkeypatch.setattr(
         designer_module.dpg,
         "get_value",
@@ -651,6 +652,7 @@ def app(monkeypatch):
     monkeypatch.setattr(module, "OpenGLRenderer", lambda: None)
     monkeypatch.setattr(module, "create_dockspace", lambda: None)
     application = module.DesignerApplication()
+    application.designer.load_lunar_demo()
     banners = []
     monkeypatch.setattr(application, "_set_banner", lambda text, color: banners.append(text))
     return application, banners
@@ -745,4 +747,3 @@ def test_app_ticks_the_banner_while_the_simulation_is_running(app, monkeypatch):
 
     assert any(" s" in text for text in banners[before:])  # elapsed seconds shown
     assert banners[-1].startswith("REACHED THE MOON")
-

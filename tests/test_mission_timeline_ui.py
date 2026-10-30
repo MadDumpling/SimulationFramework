@@ -35,3 +35,10 @@ def test_unrun_mission_timeline_is_ready():
 
     assert timeline[0].state == "READY"
     assert timeline[-1].label == "Touchdown"
+
+
+def test_running_mission_timeline_shows_simulation_progress():
+    timeline = mission_timeline(None, running=True)
+
+    assert timeline[0].state == "SIMULATING"
+    assert all(milestone.state == "PENDING" for milestone in timeline[1:])
