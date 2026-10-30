@@ -3,6 +3,7 @@ from astropy import units as u
 import ui.spacecraft_designer as designer_module
 from core.event_bus import EventBus
 from spacecraft.analysis import MISSION_PROFILES
+from spacecraft.appearance import PAINT_SCHEMES
 from spacecraft.components import Engine, FuelTank, Payload
 from spacecraft.mission import MissionSimulationResult
 from spacecraft.placement import Placement
@@ -63,6 +64,25 @@ def test_builtin_preset_picker_loads_selected_preset_without_changing_save_path(
     assert ui.spacecraft.name == "Apollo Lunar Module (descent)"
     assert ui.selected_builtin_preset == label
     assert ui.preset_path == tmp_path / "my-design.json"
+
+
+def test_appearance_controls_publish_visual_only_updates():
+    events = EventBus()
+    updates = []
+    events.subscribe("spacecraft.appearance_updated", updates.append)
+    ui = SpacecraftDesignerUI(events)
+    original_analysis = ui.analysis
+    ui.mission_result = object()
+
+    ui.set_paint_scheme(None, "Deep Space", None)
+    ui.set_national_flag(None, "Japan", None)
+
+    assert ui.spacecraft.appearance.paint_scheme == "Deep Space"
+    assert ui.spacecraft.appearance.national_flag == "Japan"
+    assert updates == [ui.spacecraft, ui.spacecraft]
+    assert ui.analysis is original_analysis
+    assert ui.mission_result is not None
+    assert PAINT_SCHEMES["Deep Space"]["primary"] != PAINT_SCHEMES["Orbital White"]["primary"]
 
 
 def test_readiness_panel_discloses_screening_not_flight_readiness():

@@ -43,6 +43,10 @@ class DesignerApplication:
         self._drag_distance = 0.0
 
         self.events.subscribe("spacecraft.updated", self._on_spacecraft_updated)
+        self.events.subscribe(
+            "spacecraft.appearance_updated",
+            self._on_spacecraft_appearance_updated,
+        )
         self.events.subscribe("component.selected", self._on_component_selected)
         self.events.subscribe("view.explode", self._on_explode)
         self.events.subscribe("view.grid", self._on_grid)
@@ -77,6 +81,9 @@ class DesignerApplication:
         self._reset_flight()  # editing the design returns the vehicle to the pad
         self.viewport.invalidate()
         self._refresh_component_overlay()
+
+    def _on_spacecraft_appearance_updated(self, spacecraft):
+        self.viewport.invalidate()
 
     def _reset_flight(self):
         self._held_banner = None

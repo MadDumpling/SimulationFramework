@@ -15,6 +15,11 @@ from spacecraft.analysis import (
     analyze_spacecraft,
     assess_mission,
 )
+from spacecraft.appearance import (
+    NATIONAL_FLAGS,
+    PAINT_SCHEMES,
+    SpacecraftAppearance,
+)
 from spacecraft.apollo11_reference import APOLLO_11_REFERENCE
 from spacecraft.apollo_lm import PRESET_PATH as APOLLO_LM_PRESET
 from spacecraft.components import (
@@ -217,6 +222,29 @@ class SpacecraftDesignerUI:
 
             with dpg.tab_bar(tag="designer_tabs"):
                 with dpg.tab(label="Design"):
+                    dpg.add_text("VEHICLE LIVERY", bullet=True)
+                    dpg.add_combo(
+                        items=list(PAINT_SCHEMES),
+                        default_value=self.spacecraft.appearance.paint_scheme,
+                        label="Paint scheme",
+                        callback=self.set_paint_scheme,
+                        width=440,
+                        tag="spacecraft_paint_scheme",
+                    )
+                    dpg.add_combo(
+                        items=list(NATIONAL_FLAGS),
+                        default_value=self.spacecraft.appearance.national_flag,
+                        label="Flag decal",
+                        callback=self.set_national_flag,
+                        width=440,
+                        tag="spacecraft_national_flag",
+                    )
+                    dpg.add_text(
+                        "Appearance changes are visual only and do not affect mission results.",
+                        color=(175, 190, 210),
+                        wrap=460,
+                    )
+                    dpg.add_separator()
                     dpg.add_text("VEHICLE ARCHITECTURE", bullet=True)
                     dpg.add_text(
                         "",
@@ -592,6 +620,20 @@ class SpacecraftDesignerUI:
 
     def set_grid(self, sender, app_data, user_data):
         self.events.publish("view.grid", bool(app_data))
+
+    def set_paint_scheme(self, sender, app_data, user_data):
+        self.spacecraft.appearance = SpacecraftAppearance(
+            paint_scheme=str(app_data),
+            national_flag=self.spacecraft.appearance.national_flag,
+        )
+        self.events.publish("spacecraft.appearance_updated", self.spacecraft)
+
+    def set_national_flag(self, sender, app_data, user_data):
+        self.spacecraft.appearance = SpacecraftAppearance(
+            paint_scheme=self.spacecraft.appearance.paint_scheme,
+            national_flag=str(app_data),
+        )
+        self.events.publish("spacecraft.appearance_updated", self.spacecraft)
 
     def reset_camera(self, sender=None, app_data=None, user_data=None):
         self.events.publish("view.reset_camera")
@@ -1885,6 +1927,16 @@ class SpacecraftDesignerUI:
         for tag, value in values.items():
             if dpg.does_item_exist(tag):
                 dpg.set_value(tag, value)
+        if dpg.does_item_exist("spacecraft_paint_scheme"):
+            dpg.set_value(
+                "spacecraft_paint_scheme",
+                self.spacecraft.appearance.paint_scheme,
+            )
+        if dpg.does_item_exist("spacecraft_national_flag"):
+            dpg.set_value(
+                "spacecraft_national_flag",
+                self.spacecraft.appearance.national_flag,
+            )
         check_colors = {
             True: (100, 220, 150),
             False: (255, 105, 90),

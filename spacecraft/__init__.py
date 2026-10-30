@@ -8,6 +8,7 @@ from .analysis import (
     analyze_spacecraft,
     assess_mission,
 )
+from .appearance import NATIONAL_FLAGS, PAINT_SCHEMES, SpacecraftAppearance
 from .components import (
     Avionics,
     Battery,
@@ -41,6 +42,9 @@ from .mission import (
 
 __all__ = [
     "AttitudeLimits",
+    "SpacecraftAppearance",
+    "PAINT_SCHEMES",
+    "NATIONAL_FLAGS",
     "DataGap",
     "DataProvenance",
     "DefinitionReport",

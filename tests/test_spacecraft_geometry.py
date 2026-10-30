@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from spacecraft.appearance import PAINT_SCHEMES, SpacecraftAppearance
 from spacecraft.components import component_from_catalog
 from spacecraft.geometry import (
     PRIMITIVES,
@@ -51,6 +52,49 @@ def test_starter_design_layout_covers_every_component():
     for part in layout.parts:
         assert part.model.shape == (4, 4)
         assert np.all(np.isfinite(part.model))
+
+
+def test_paint_scheme_colors_the_hull_and_flag_adds_viewport_decal():
+    craft = Spacecraft(
+        "Custom appearance",
+        appearance=SpacecraftAppearance("Deep Space", "Japan"),
+    )
+    tank = component_from_catalog("fuel_tank")
+    craft.add_component(tank)
+
+    layout = layout_spacecraft(craft, include_analysis=False)
+    tank_colors = {
+        part.color
+        for part in layout.parts
+        if part.component_id == tank.id
+    }
+
+    assert PAINT_SCHEMES["Deep Space"]["primary"] in tank_colors
+    assert sum(part.component_id is None and part.primitive == "box" for part in layout.parts) == 36
+
+
+def test_flag_can_be_hidden_without_changing_spacecraft_component_visuals():
+    craft = Spacecraft(
+        "No flag",
+        appearance=SpacecraftAppearance(national_flag="None"),
+    )
+    craft.add_component(component_from_catalog("fuel_tank"))
+
+    unflagged = layout_spacecraft(craft, include_analysis=False)
+    craft.appearance.national_flag = "Japan"
+    flagged = layout_spacecraft(craft, include_analysis=False)
+
+    assert set(unflagged.component_ids()) == {craft.components[0].id}
+    assert [
+        (part.component_id, part.primitive, part.color)
+        for part in unflagged.parts
+        if part.component_id is not None
+    ] == [
+        (part.component_id, part.primitive, part.color)
+        for part in flagged.parts
+        if part.component_id is not None
+    ]
+    assert len(flagged.parts) - len(unflagged.parts) == 36
 
 
 def test_tank_length_grows_with_capacity():

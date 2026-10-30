@@ -8,12 +8,16 @@ from spacecraft.components import (
     Payload,
     PowerSystem,
 )
+from spacecraft.appearance import SpacecraftAppearance
 from spacecraft.presets import load_spacecraft, save_spacecraft
 from spacecraft.vehicle import Spacecraft
 
 
 def test_spacecraft_preset_round_trip(tmp_path):
-    craft = Spacecraft("Moon Explorer")
+    craft = Spacecraft(
+        "Moon Explorer",
+        appearance=SpacecraftAppearance("Deep Space", "Japan"),
+    )
     craft.add_component(
         Engine(
             name="Vacuum engine",
@@ -56,6 +60,22 @@ def test_spacecraft_preset_round_trip(tmp_path):
     ]
     assert restored.components[1].fuel_mass == 15_000.0
     assert restored.components[0].id == craft.components[0].id
+    assert restored.appearance == craft.appearance
+
+
+def test_legacy_preset_defaults_to_standard_appearance(tmp_path):
+    path = tmp_path / "legacy.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "name": "Legacy vehicle",
+                "components": [],
+            }
+        )
+    )
+
+    assert load_spacecraft(path).appearance == SpacecraftAppearance()
 
 
 def test_load_rejects_unsupported_preset_version(tmp_path):

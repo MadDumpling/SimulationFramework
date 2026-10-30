@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 import math
 
+from .appearance import SpacecraftAppearance
 from .components import Component
 from .provenance import DataProvenance
 
@@ -66,6 +67,7 @@ class Spacecraft:
     provenance: DataProvenance = field(default_factory=DataProvenance)
     landing_gear: LandingGear | None = None
     attitude_limits: AttitudeLimits | None = None
+    appearance: SpacecraftAppearance = field(default_factory=SpacecraftAppearance)
 
     def __post_init__(self) -> None:
         if not self.name.strip():
