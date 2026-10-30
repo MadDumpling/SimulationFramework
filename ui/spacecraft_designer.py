@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from uuid import uuid4
 
 import dearpygui.dearpygui as dpg
@@ -15,6 +16,7 @@ from spacecraft.analysis import (
     analyze_spacecraft,
     assess_mission,
 )
+from spacecraft.advisor import advise_design, format_advice
 from spacecraft.appearance import (
     NATIONAL_FLAGS,
     PAINT_SCHEMES,
@@ -55,6 +57,10 @@ from .mission_outcome import (
     prescreen_text,
 )
 from .mission_timeline import mission_timeline
+from .mission_report_pdf import (
+    build_mission_report_text,
+    export_mission_report_pdf,
+)
 
 DEFAULT_PRESET = (
     Path(__file__).resolve().parents[1]
@@ -532,6 +538,16 @@ class SpacecraftDesignerUI:
                         label="Run Lunar Mission Simulation",
                         callback=self.run_lunar_mission,
                     )
+                    dpg.add_button(
+                        label="Export Mission Report PDF",
+                        callback=self.export_mission_report,
+                    )
+                    dpg.add_text(
+                        "",
+                        tag="mission_report_export_status",
+                        wrap=460,
+                        color=(175, 190, 210),
+                    )
                     dpg.add_text(
                         "A successful result means lunar sphere-of-influence entry, "
                         "not capture or landing.",
@@ -568,6 +584,14 @@ class SpacecraftDesignerUI:
                         tag="lunar_failure_guidance",
                         wrap=460,
                         color=(255, 190, 80),
+                    )
+                    dpg.add_separator()
+                    dpg.add_text("DESIGN ADVISOR · RANKED BOTTLENECKS", bullet=True)
+                    dpg.add_text(
+                        "",
+                        tag="spacecraft_design_advisor",
+                        wrap=460,
+                        color=(195, 205, 220),
                     )
                     dpg.add_separator()
                     dpg.add_text("Mission timeline", bullet=True)
@@ -1613,6 +1637,56 @@ class SpacecraftDesignerUI:
             )
         self.refresh()
 
+    def export_mission_report(self, sender=None, app_data=None, user_data=None):
+        """Export the current screening state and ranked advisor as a PDF."""
+        safe_name = re.sub(
+            r"[^A-Za-z0-9._-]+",
+            "_",
+            self.spacecraft.name,
+        ).strip("._") or "spacecraft"
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        destination = (
+            Path.cwd()
+            / "mission_reports"
+            / f"{safe_name}_mission_report_{timestamp}.pdf"
+        )
+        analysis = analyze_spacecraft(self.spacecraft)
+        mission = MISSION_PROFILES[self.mission_id]
+        advice = advise_design(
+            self.spacecraft,
+            analysis,
+            mission,
+            self.mission_result,
+        )
+        report_text = build_mission_report_text(
+            self.spacecraft,
+            analysis,
+            mission,
+            advice,
+            self.mission_result,
+        )
+        try:
+            written_path = export_mission_report_pdf(destination, report_text)
+        except (OSError, RuntimeError, ValueError) as error:
+            self._set_mission_report_status(
+                f"Could not export mission report PDF: {error}",
+                warning=True,
+            )
+            return
+        self._set_mission_report_status(
+            f"Mission report saved to {written_path}",
+        )
+
+    @staticmethod
+    def _set_mission_report_status(message, warning=False):
+        tag = "mission_report_export_status"
+        if dpg.does_item_exist(tag):
+            dpg.set_value(tag, message)
+            dpg.configure_item(
+                tag,
+                color=(255, 190, 80) if warning else (175, 190, 210),
+            )
+
     def _invalidate_mission_result(self, sender=None, app_data=None, user_data=None):
         self._cancel_mission()
         if dpg.does_item_exist("lunar_failure_guidance"):
@@ -1875,6 +1949,12 @@ class SpacecraftDesignerUI:
             return
         analysis = self.analysis
         mission = assess_mission(analysis, MISSION_PROFILES[self.mission_id])
+        advice = advise_design(
+            self.spacecraft,
+            analysis,
+            MISSION_PROFILES[self.mission_id],
+            self.mission_result,
+        )
         properties = mass_properties(self.spacecraft)
         definition = assess_definition(self.spacecraft)
         (
@@ -1947,6 +2027,7 @@ class SpacecraftDesignerUI:
             "spacecraft_warnings": "\n".join(analysis.warnings),
             "spacecraft_lunar_check": prescreen_text(lunar_prescreen(analysis)),
             "spacecraft_data_readiness": definition.summary(),
+            "spacecraft_design_advisor": format_advice(advice),
         }
         for tag, value in values.items():
             if dpg.does_item_exist(tag):
