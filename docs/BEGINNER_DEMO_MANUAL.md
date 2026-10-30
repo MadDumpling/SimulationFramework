@@ -161,16 +161,25 @@ flight effects described in section 7.
 7. Explain that this scenario demonstrates modeled lunar sphere-of-influence
    entry without an intersection with the Moon's mean-radius surface for these
    inputs. It does not demonstrate lunar orbit or a safe landing.
-8. Leave **Demo sounds** checked to hear a synthesized takeoff cue and then a
+8. Read the **Design Advisor · Ranked Bottlenecks** section. The numbered
+   findings put blockers ahead of lower-impact issues and show evidence plus a
+   suggested next step. These are deterministic rule-based screening hints,
+   not automatic design changes or flight-certification advice.
+9. Leave **Demo sounds** checked to hear a synthesized takeoff cue and then a
    success or failure cue when the solver returns its result. Uncheck it to
    mute the cues. If the computer has no supported audio player, the audio
    status text explains that sounds are unavailable; the simulation still
    works.
-9. When the result is classified as a lunar arrival, watch the illustrative
+10. When the result is classified as a lunar arrival, watch the illustrative
    animation: the spacecraft descends to the Moon and your selected flag
    appears on a separate pole beside it. This touchdown is scripted for the
    demo. The solver only screens the lunar encounter; it does not calculate
    capture, descent, or a physical landing.
+11. Click **Export Mission Report PDF** to save the current mission-screening
+    report, metrics, and ranked advisor findings. The PDF is written to the
+    `mission_reports/` folder under the directory where you started the app.
+    You can export before running the trajectory; in that case, the report is
+    explicitly labeled as a preflight screen without a propagated result.
 
 The example inputs are fixed for the showcase. If you change the date or
 transfer time, use the new on-screen report as the result; don't promise the
@@ -330,6 +339,16 @@ The **Mission** tab contains two different references and a trajectory screen:
 - **Transfer time (days)** is the assumed travel duration; the input is limited
   to 3–8 days.
 - **Run Lunar Mission Simulation** runs the lunar trajectory screen.
+- **Design Advisor · Ranked Bottlenecks** orders current findings by modeled
+  impact (critical, high, medium, then low), shows the measurement behind each
+  finding, and suggests a next check. Findings update when the vehicle or
+  mission result changes. The advisor only evaluates encoded rules; it does
+  not edit the spacecraft or verify real hardware.
+- **Export Mission Report PDF** writes a timestamped PDF into
+  `mission_reports/` from the directory used to launch the app. It includes
+  vehicle and trajectory metrics when available, model caveats, and the same
+  ranked advice shown in the Mission tab. If no trajectory has been run, it
+  exports a clearly labeled preflight report instead.
 - **Demo sounds** plays a synthesized takeoff cue when a powered liftoff starts
   and a success or failure cue when a mission result is returned. Uncheck it
   to mute the cues. Audio is played by a supported audio player on your

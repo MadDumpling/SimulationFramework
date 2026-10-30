@@ -85,6 +85,39 @@ def test_appearance_controls_publish_visual_only_updates():
     assert PAINT_SCHEMES["Deep Space"]["primary"] != PAINT_SCHEMES["Orbital White"]["primary"]
 
 
+def test_refresh_shows_ranked_design_advice_on_mission_tab():
+    ui = SpacecraftDesignerUI(EventBus())
+    ui.built = True
+    designer_module.dpg.set_value.reset_mock()
+
+    ui.refresh()
+
+    values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert "RANKED DESIGN ADVISOR" in values["spacecraft_design_advisor"]
+    assert "1. [" in values["spacecraft_design_advisor"]
+    assert "Suggested action:" in values["spacecraft_design_advisor"]
+
+
+def test_export_mission_report_writes_pdf_and_discloses_path(tmp_path, monkeypatch):
+    ui = SpacecraftDesignerUI(EventBus())
+    monkeypatch.chdir(tmp_path)
+    designer_module.dpg.set_value.reset_mock()
+
+    ui.export_mission_report()
+
+    values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert "Mission report saved to" in values["mission_report_export_status"]
+    report_paths = list((tmp_path / "mission_reports").glob("*.pdf"))
+    assert len(report_paths) == 1
+    assert report_paths[0].read_bytes().startswith(b"%PDF-")
+
+
 def test_readiness_panel_discloses_screening_not_flight_readiness():
     ui = SpacecraftDesignerUI(EventBus())
     from spacecraft.mass_properties import mass_properties
