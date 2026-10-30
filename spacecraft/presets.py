@@ -3,18 +3,9 @@
 import json
 from pathlib import Path
 
-from .components import (
-    component_from_dict,
-    component_to_dict,
-    dataclass_from_dict,
-    dataclass_to_dict,
-)
-from .provenance import DataProvenance
-from .vehicle import AttitudeLimits, LandingGear, Spacecraft
+from .components import component_from_dict, component_to_dict
+from .vehicle import Spacecraft
 
-# v2 adds editor layout plus vehicle revision/provenance, landing gear, attitude
-# limits, and per-component provenance, propulsion envelope, and mass-property
-# fields. v1 files load unchanged: every new field defaults to unknown/illustrative.
 SCHEMA_VERSION = 2
 
 
@@ -24,18 +15,6 @@ def save_spacecraft(spacecraft: Spacecraft, filepath: str | Path) -> None:
     data = {
         "schema_version": SCHEMA_VERSION,
         "name": spacecraft.name,
-        "revision": spacecraft.revision,
-        "provenance": dataclass_to_dict(spacecraft.provenance),
-        "landing_gear": (
-            dataclass_to_dict(spacecraft.landing_gear)
-            if spacecraft.landing_gear is not None
-            else None
-        ),
-        "attitude_limits": (
-            dataclass_to_dict(spacecraft.attitude_limits)
-            if spacecraft.attitude_limits is not None
-            else None
-        ),
         "components": [
             component_to_dict(component) for component in spacecraft.components
         ],
@@ -68,19 +47,7 @@ def load_spacecraft(filepath: str | Path) -> Spacecraft:
     if not isinstance(components_data, list):
         raise ValueError("Spacecraft preset components must be a list")
 
-    revision = data.get("revision", "")
-    if not isinstance(revision, str):
-        raise ValueError("Spacecraft preset revision must be a string")
-    optional = {}
-    for key, cls in (
-        ("provenance", DataProvenance),
-        ("landing_gear", LandingGear),
-        ("attitude_limits", AttitudeLimits),
-    ):
-        if data.get(key) is not None:
-            optional[key] = dataclass_from_dict(cls, data[key])
-
-    spacecraft = Spacecraft(name=name, revision=revision, **optional)
+    spacecraft = Spacecraft(name=name)
     for component_data in components_data:
         spacecraft.add_component(component_from_dict(component_data))
 

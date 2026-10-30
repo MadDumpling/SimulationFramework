@@ -1,23 +1,8 @@
-"""Typed spacecraft parts with traceable data, plus a small illustrative catalog.
+"""Typed spacecraft parts and a small editable demonstration catalog."""
 
-Optional fields default to ``None``, meaning *unknown*. Unknowns are surfaced by
-``spacecraft.readiness`` rather than silently treated as zero or as a default.
-Vehicle axes: +Y is the long axis (base at y=0); X and Z are lateral.
-"""
-
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field
 import math
 from uuid import uuid4
-
-from .propulsion import (
-    SEA_LEVEL_PRESSURE,
-    STANDARD_GRAVITY,
-    Gimbal,
-    IgnitionLimits,
-    ThrottleSpec,
-)
-from .provenance import DataProvenance, MissingDataError
-from .placement import Placement
 
 
 def _require_nonnegative(field_name: str, value: float) -> None:
@@ -30,69 +15,25 @@ def _require_positive(field_name: str, value: float) -> None:
         raise ValueError(f"{field_name} must be a finite positive number")
 
 
-def _optional_positive(field_name: str, value: float | None) -> None:
-    if value is not None:
-        _require_positive(field_name, value)
-
-
-def _tuple_or_none(field_name: str, value, length: int, positive: bool) -> tuple | None:
-    if value is None:
-        return None
-    try:
-        result = tuple(float(v) for v in value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f"{field_name} must be {length} numbers") from error
-    if len(result) != length or not all(math.isfinite(v) for v in result):
-        raise ValueError(f"{field_name} must be {length} finite numbers")
-    if positive and not all(v > 0.0 for v in result):
-        raise ValueError(f"{field_name} values must be positive")
-    return result
-
-
 @dataclass(kw_only=True)
 class Component:
     name: str
     dry_mass: float
     id: str = field(default_factory=lambda: str(uuid4()))
     description: str = ""
-    stage: int = 1
-    provenance: DataProvenance = field(default_factory=DataProvenance)
-    # Centre of mass in vehicle axes (m) and principal inertia about it (kg m^2).
-    com_m: tuple[float, float, float] | None = None
-    inertia_kgm2: tuple[float, float, float] | None = None
-    # Envelope as (length along +Y, diameter), metres.
-    dimensions_m: tuple[float, float] | None = None
-    # Optional attachment transform. None preserves legacy automatic stacking.
-    placement: Placement | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ValueError("name must not be empty")
         _require_nonnegative("dry_mass", self.dry_mass)
-        if not isinstance(self.stage, int) or isinstance(self.stage, bool) or self.stage < 1:
-            raise ValueError("stage must be an integer of at least 1")
-        self.com_m = _tuple_or_none("com_m", self.com_m, 3, positive=False)
-        self.inertia_kgm2 = _tuple_or_none("inertia_kgm2", self.inertia_kgm2, 3, positive=True)
-        self.dimensions_m = _tuple_or_none("dimensions_m", self.dimensions_m, 2, positive=True)
 
 
 @dataclass(kw_only=True)
 class Engine(Component):
-    """Rated vacuum performance plus the data to evaluate off-nominal operation.
-
-    ``thrust`` and ``isp`` are vacuum values at the rated (throttle 1.0) point.
-    """
-
     thrust: float
     isp: float
     fuel_type: str
     power_draw_kw: float = 0.0
-    sea_level_thrust: float | None = None
-    chamber_pressure_pa: float | None = None
-    exit_area_m2: float | None = None
-    throttle: ThrottleSpec = field(default_factory=ThrottleSpec)
-    ignition: IgnitionLimits = field(default_factory=IgnitionLimits)
-    gimbal: Gimbal = field(default_factory=Gimbal)
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -101,60 +42,6 @@ class Engine(Component):
         _require_nonnegative("power_draw_kw", self.power_draw_kw)
         if not self.fuel_type.strip():
             raise ValueError("fuel_type must not be empty")
-        _optional_positive("sea_level_thrust", self.sea_level_thrust)
-        _optional_positive("chamber_pressure_pa", self.chamber_pressure_pa)
-        _optional_positive("exit_area_m2", self.exit_area_m2)
-        if self.sea_level_thrust is not None and self.sea_level_thrust > self.thrust:
-            raise ValueError("sea_level_thrust cannot exceed vacuum thrust")
-
-    # -- operating model ----------------------------------------------------
-
-    @property
-    def rated_mass_flow(self) -> float:
-        return self.thrust / (self.isp * STANDARD_GRAVITY)
-
-    def effective_exit_area(self) -> float | None:
-        """Nozzle exit area, from the stated value or the vac/sea-level thrust gap."""
-        if self.exit_area_m2 is not None:
-            return self.exit_area_m2
-        if self.sea_level_thrust is not None:
-            return (self.thrust - self.sea_level_thrust) / SEA_LEVEL_PRESSURE
-        return None
-
-    def mass_flow_at(self, throttle: float = 1.0) -> float:
-        """Propellant flow (kg/s); independent of ambient pressure (choked nozzle)."""
-        mass_flow_fraction, _ = self.throttle.response(throttle)
-        return self.rated_mass_flow * mass_flow_fraction
-
-    def vacuum_thrust_at(self, throttle: float = 1.0) -> float:
-        mass_flow_fraction, isp_fraction = self.throttle.response(throttle)
-        return self.thrust * mass_flow_fraction * isp_fraction
-
-    def thrust_at(self, throttle: float = 1.0, ambient_pressure_pa: float = 0.0) -> float:
-        """Thrust (N) at a throttle setting and ambient pressure: F = F_vac - p_a * A_e."""
-        _require_nonnegative("ambient_pressure_pa", ambient_pressure_pa)
-        vacuum = self.vacuum_thrust_at(throttle)
-        if ambient_pressure_pa == 0.0 or vacuum == 0.0:
-            return vacuum
-        area = self.effective_exit_area()
-        if area is None:
-            raise MissingDataError(
-                "exit_area_m2 (or sea_level_thrust) is needed to correct thrust for ambient pressure"
-            )
-        return max(vacuum - ambient_pressure_pa * area, 0.0)
-
-    def isp_at(self, throttle: float = 1.0, ambient_pressure_pa: float = 0.0) -> float:
-        flow = self.mass_flow_at(throttle)
-        if flow == 0.0:
-            return 0.0
-        return self.thrust_at(throttle, ambient_pressure_pa) / (flow * STANDARD_GRAVITY)
-
-    def chamber_pressure_at(self, throttle: float = 1.0) -> float:
-        """Chamber pressure (Pa); scales with mass flow for a choked nozzle (constant c*)."""
-        if self.chamber_pressure_pa is None:
-            raise MissingDataError("chamber_pressure_pa is unknown")
-        mass_flow_fraction, _ = self.throttle.response(throttle)
-        return self.chamber_pressure_pa * mass_flow_fraction
 
 
 @dataclass(kw_only=True)
@@ -162,8 +49,6 @@ class FuelTank(Component):
     capacity: float
     fuel_mass: float
     fuel_type: str
-    # Loaded propellant that cannot be burned (trapped/residual). None = unknown.
-    residual_propellant: float | None = None
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -173,13 +58,6 @@ class FuelTank(Component):
             raise ValueError("fuel_mass cannot exceed tank capacity")
         if not self.fuel_type.strip():
             raise ValueError("fuel_type must not be empty")
-        if self.residual_propellant is not None:
-            _require_nonnegative("residual_propellant", self.residual_propellant)
-
-    @property
-    def usable_propellant(self) -> float:
-        """Burnable propellant; unknown residual is treated as zero (and flagged)."""
-        return max(self.fuel_mass - (self.residual_propellant or 0.0), 0.0)
 
 
 @dataclass(kw_only=True)
@@ -204,19 +82,6 @@ _COMPONENT_TYPES = {
     "Payload": Payload,
     "PowerSystem": PowerSystem,
 }
-
-# Nested dataclass fields that need rebuilding from JSON objects.
-_NESTED_TYPES = {
-    "provenance": DataProvenance,
-    "throttle": ThrottleSpec,
-    "ignition": IgnitionLimits,
-    "gimbal": Gimbal,
-    "placement": Placement,
-}
-
-_ILLUSTRATIVE_NOTE = (
-    "Illustrative placeholder values, not real flight hardware data."
-)
 
 # Demonstration values are editable and are not certified flight-performance data.
 _CATALOG = {
@@ -255,6 +120,7 @@ _CATALOG = {
 def component_from_catalog(catalog_id: str) -> Component:
     """Create a fresh component from the editable demonstration catalog."""
     try:
+        component_type = catalog_id
         values = _CATALOG[catalog_id].copy()
     except KeyError as error:
         raise ValueError(f"Unknown component catalog id: {catalog_id}") from error
@@ -263,39 +129,16 @@ def component_from_catalog(catalog_id: str) -> Component:
         "fuel_tank": FuelTank,
         "payload": Payload,
         "power_system": PowerSystem,
-    }[catalog_id]
-    return component_class(
-        provenance=DataProvenance(quality="illustrative", notes=_ILLUSTRATIVE_NOTE),
-        **values,
-    )
-
-
-def dataclass_to_dict(value) -> dict:
-    """Shallow-recursive dataclass to JSON-ready dict (tuples become lists)."""
-    result = {}
-    for item in fields(value):
-        attribute = getattr(value, item.name)
-        if is_dataclass(attribute):
-            attribute = dataclass_to_dict(attribute)
-        elif isinstance(attribute, tuple):
-            attribute = [list(row) if isinstance(row, tuple) else row for row in attribute]
-        result[item.name] = attribute
-    return result
-
-
-def dataclass_from_dict(cls, data):
-    """Build ``cls`` from a JSON object, rejecting non-objects and unknown keys."""
-    if not isinstance(data, dict):
-        raise ValueError(f"{cls.__name__} data must be an object")
-    try:
-        return cls(**data)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f"Invalid {cls.__name__}: {error}") from error
+    }[component_type]
+    return component_class(**values)
 
 
 def component_to_dict(component: Component) -> dict:
     """Convert a supported component into its JSON-serializable representation."""
-    return {"type": type(component).__name__, **dataclass_to_dict(component)}
+    result = {"type": type(component).__name__}
+    for key, value in vars(component).items():
+        result[key] = value
+    return result
 
 
 def component_from_dict(data: dict) -> Component:
@@ -307,12 +150,6 @@ def component_from_dict(data: dict) -> Component:
     if component_class is None:
         raise ValueError(f"Unknown component type: {type_name}")
     values = {key: value for key, value in data.items() if key != "type"}
-    for key, nested_class in _NESTED_TYPES.items():
-        if key in values:
-            if values[key] is None:
-                del values[key]  # fall back to the default (all-unknown) record
-            else:
-                values[key] = dataclass_from_dict(nested_class, values[key])
     try:
         return component_class(**values)
     except (TypeError, ValueError) as error:

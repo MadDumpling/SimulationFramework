@@ -1,17 +1,24 @@
-from ui import Application, DesignerApplication
+from ui import (
+    Application,
+    SimulationApplication,
+)
 
 
 def main():
     app = Application()
+
     app.initialize()
 
-    designer_app = DesignerApplication()
-    designer_app.initialize()
+    simulation_app = (
+        SimulationApplication()
+    )
 
     try:
-        while designer_app.running and app.running():
-            designer_app.update()
-            designer_app.render()
+        simulation_app.initialize()
+
+        while simulation_app.running and app.running():
+            simulation_app.update()
+            simulation_app.render()
             app.render()
     finally:
         app.shutdown()
