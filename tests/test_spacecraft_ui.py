@@ -91,3 +91,56 @@ def test_lunar_mission_callback_runs_trajectory_and_reports_result(monkeypatch):
     ui._invalidate_mission_result(None, 6.0, None)
 
     assert ui.mission_result is None
+
+
+def test_selection_is_published_and_cleared_when_part_removed(tmp_path):
+    events = EventBus()
+    selected = []
+    events.subscribe("component.selected", selected.append)
+    ui = SpacecraftDesignerUI(events, preset_path=tmp_path / "design.json")
+    target = ui.spacecraft.components[0]
+
+    ui.select_component(target.id)
+    ui.select_component("not-a-component")
+    ui.remove_component(None, None, target.id)
+
+    assert selected == [target.id, None]
+    assert ui.selected_id is None
+
+
+def test_adding_a_component_selects_it(tmp_path):
+    events = EventBus()
+    ui = SpacecraftDesignerUI(events, preset_path=tmp_path / "design.json")
+
+    ui.add_component(None, None, "engine")
+
+    assert ui.selected_id == ui.spacecraft.components[-1].id
+
+
+def test_duplicate_copies_properties_with_a_new_id(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    original = next(c for c in ui.spacecraft.components if isinstance(c, Engine))
+    count = len(ui.spacecraft.components)
+
+    ui.duplicate_component(None, None, original.id)
+
+    copy = ui.spacecraft.components[-1]
+    assert len(ui.spacecraft.components) == count + 1
+    assert copy.id != original.id
+    assert (copy.thrust, copy.isp) == (original.thrust, original.isp)
+    assert ui.selected_id == copy.id
+
+
+def test_view_controls_publish_events():
+    events = EventBus()
+    seen = []
+    events.subscribe("view.explode", lambda v: seen.append(("explode", v)))
+    events.subscribe("view.grid", lambda v: seen.append(("grid", v)))
+    events.subscribe("view.reset_camera", lambda: seen.append(("reset", None)))
+    ui = SpacecraftDesignerUI(events)
+
+    ui.set_explode(None, 0.5, None)
+    ui.set_grid(None, False, None)
+    ui.reset_camera()
+
+    assert seen == [("explode", 0.5), ("grid", False), ("reset", None)]

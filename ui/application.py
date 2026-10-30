@@ -13,7 +13,7 @@ class Application:
         )
 
         dpg.create_viewport(
-            title="Simulation Sandbox",
+            title="Spacecraft Configurator",
             width=1920,
             height=1080,
         )

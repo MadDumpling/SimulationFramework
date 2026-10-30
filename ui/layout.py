@@ -11,6 +11,7 @@ def create_dockspace():
 
             dpg.add_menu_item(
                 label="Exit",
+                callback=dpg.stop_dearpygui,
             )
 
     with dpg.window(
@@ -25,8 +26,10 @@ def create_dockspace():
         pass
 
     with dpg.window(
-        label="Simulation",
-        tag="simulation_window",
+        label="Viewport",
+        tag="viewport_window",
+        width=1300,
+        height=800,
     ):
 
         with dpg.texture_registry():
@@ -44,16 +47,19 @@ def create_dockspace():
                 tag="viewport_texture",
             )
 
+        dpg.add_text(
+            "Left-drag orbit · Right/middle-drag pan · Wheel zoom · "
+            "Click select · F frame · R reset",
+            color=(150, 165, 185),
+        )
+
         dpg.add_image(
             "viewport_texture",
             tag="viewport_image",
         )
 
-    with dpg.window(
-        label="Console",
-        tag="console_window",
-    ):
-
         dpg.add_text(
-            "Console",
+            "",
+            tag="fps_text",
+            color=(150, 165, 185),
         )
