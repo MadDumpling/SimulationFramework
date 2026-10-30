@@ -1,169 +1,1645 @@
-# Spacecraft Configurator
+# Taichi Simulation Template
 
-An interactive spacecraft configuration designer. A DearPyGui panel edits the
-vehicle (engines, propellant tanks, payloads, power systems) and an OpenGL
-viewport shows it live in 3D. Mass, ideal delta-v, TWR, burn time, and power
-balance update as the design changes, and a lunar-reachability check propagates
-the vehicle against the JPL DE440s ephemeris.
+A reusable Python template for building interactive simulations with Taichi. The goal is to decrease the time spent on infrastructure for building CAD or simulation software. 
 
-## Viewport controls
+## Features
 
-| Input | Action |
-| --- | --- |
-| Left-drag | Orbit |
-| Right- or middle-drag | Pan |
-| Mouse wheel | Zoom |
-| Left-click a part | Select it (highlighted in the viewport and the component list) |
-| `F` | Frame the vehicle |
-| `R` | Reset the camera |
+- Taichi GPU simulation engine
+- DearPyGui control panel
+- Editable simulation parameters
+- Pause / Resume / Reset controls
+- JSON configuration presets
+- Screenshot and recording support
+- Pytest testing setup
+- Modular architecture for rapid prototyping
+- Spacecraft Designer MVP with component assembly and ideal performance analysis
 
-The designer panel adds components, edits their properties, duplicates parts
-(handy for engine clusters), saves/loads the design as JSON, and has an
-**Exploded view** slider and grid toggle. Part sizes follow the design:
-tank length tracks propellant capacity, engine bell size tracks thrust, and
-solar-wing area tracks generation. This is a visualization aid, not CAD.
+## Spacecraft Designer MVP
 
-## Why most designs fail the lunar mission
+The application opens directly into the **Spacecraft Designer** for assembling
+engines, propellant tanks, payloads, and power systems. Component properties can
+be edited directly; mass, ideal single-stage delta-v, TWR, burn time, and power
+balance update as the design changes. The panel also includes a schematic preview
+and JSON save/load controls. Select a component in the assembly list and move it
+around the schematic with **W/A/S/D**; layout positions are saved with the design.
+The bouncing-balls and boids examples are no longer launched by default. The
+starter spacecraft design is stored in
+[presets/spacecraft/spacecraft_mvp.json](presets/spacecraft/spacecraft_mvp.json).
 
-The mission check is a single-stage screening, and it is strict. The vehicle needs
-thrust-to-weight above 1 to leave the pad, and about 12.6 km/s of ideal delta-v
-(9.4 km/s Earth ascent plus about 3.2 km/s transfer). The two pull against each other:
-adding propellant raises delta-v but lowers thrust-to-weight. With the catalog engine
-(845 kN, 300 s Isp) only a narrow band of designs passes: too little fuel or thrust
-falls short, too much fuel for the engines cannot lift off.
+The **Run Lunar Mission Simulation** workflow takes a UTC departure date and
+transfer duration, solves a Lambert transfer, then numerically propagates the
+spacecraft with Sun/Earth/Moon gravity against the JPL DE440s ephemeris. It reports
+whether the trajectory reaches the Moon's Laplace sphere of influence, plus
+required injection delta-v, closest approach, and predicted surface impact. The
+DE440s kernel is downloaded securely on first use and cached locally.
 
-The **Lunar mission check** in the designer panel shows both numbers for the current
-design as you edit it, says which gate fails, and suggests what to change. **Load
-Lunar Demo** loads an illustrative design that passes, so you can see a landing. Its
-tanks and engine are far lighter than real hardware of that size, so it shows the pass
-window, not a flyable vehicle.
+This first mission mode is a trajectory screening simulation—not lunar orbit
+capture or landing. It assumes a phase-aligned 200 km circular parking orbit,
+impulsive transfer injection, a 9.4 km/s Earth-ascent allowance, and ideal
+rocket-equation vehicle delta-v. Atmospheric flight, launch site/azimuth,
+staging, finite burns, detailed engine curves, guidance, and launch-window
+optimization are not modeled. Catalog data is illustrative; enter verified
+spacecraft masses and engine performance for meaningful results. A surface impact
+is reported separately and is not treated as a landing.
 
-## Mission flight animation
-
-**Run Lunar Mission Simulation** also animates the viewport and shows a verdict
-banner above it. The vehicle lifts off and hovers while the simulation runs in
-the background, then the verdict decides what happens:
-
-| Verdict | Animation | Banner |
-| --- | --- | --- |
-| Path reaches the Moon | Flips tail-first, retro-burns, and lands softly on the white Moon sphere | `REACHED THE MOON` (green) |
-| Path misses the Moon | Flies past the Moon and is lost in space | `MISSION FAILED — misses the Moon`, with closest approach |
-| Vehicle cannot reach it (delta-v) | Engine sputters out, the vehicle falls back and crashes | `MISSION FAILED — cannot reach the Moon`, with the reason |
-| Cannot lift off (thrust-to-weight not above 1, or no engine) | Engine strains on the pad; the vehicle never leaves | `MISSION FAILED — cannot lift off`, with the reason |
-| Simulation error (e.g. offline) | Returns to the pad | `SIMULATION ERROR — no verdict` (amber) |
-
-Editing the design, or **Reset Flight**, returns the vehicle to the pad. The
-animation illustrates the verdict; it is not a plot of the computed trajectory.
-"Reached the Moon" still only means the path entered the Moon's sphere of
-influence: capture, descent and touchdown are not simulated, so the landing is
-an illustration and the banner says so.
-
-## Lunar mission screening
-
-**Run Lunar Mission Simulation** takes a UTC departure date and transfer
-duration, solves a Lambert transfer, then numerically propagates the spacecraft
-with Sun/Earth/Moon gravity against JPL DE440s. It reports whether the
-trajectory reaches the Moon's sphere of influence, the required injection
-delta-v, closest approach, and predicted surface impact. The DE440s kernel is
-downloaded on first use and cached locally.
-
-This is trajectory screening, not capture or landing. It assumes a 200 km
-circular parking orbit, impulsive injection, a 9.4 km/s Earth-ascent allowance,
-and ideal rocket-equation delta-v. Catalog values are illustrative; enter
-verified masses and engine performance for meaningful results.
-
-The product's actual success goal is a safe lunar touchdown. See
-[docs/LUNAR_LANDING_ROADMAP.md](docs/LUNAR_LANDING_ROADMAP.md) for the success
-definition, current-model limits, required real-world data, and implementation
-roadmap.
-
-## Vehicle definition
-
-Every component and the vehicle itself carry a **data provenance** record:
-`quality` (`measured`, `published`, `estimated`, or `illustrative`), `source`,
-`revision`, `uncertainty_pct`, and units. `measured`/`published` data must cite a
-source. Everything built from the catalog is `illustrative`.
-
-Optional values default to `None`, which means *unknown*, never zero. The
-**Vehicle data readiness** panel lists what is unknown or untraceable and labels
-the vehicle `PROTOTYPE DATA` until nothing blocks and every part cites real data.
-Definitions cover:
-
-- Mass: dry, loaded and residual propellant, tank capacity, stage assignment.
-- Engines: vacuum thrust/Isp, sea-level thrust or exit area, chamber pressure,
-  throttle range and curve, ignition/restart limits, burn duration, minimum
-  impulse, tail-off, gimbal angle and rate. `Engine.thrust_at(throttle,
-  ambient_pressure_pa)`, `mass_flow_at` and `chamber_pressure_at` evaluate the
-  model and raise `MissingDataError` rather than guess.
-- Geometry: component envelopes, centre of mass and inertia, landing-gear contact
-  envelope, allowable tilt and angular rate.
-
-The panel edits stage, data quality/source and residual propellant. The rest is
-set in the JSON design file (schema v2; v1 files still load).
-
-## Apollo LM reference vehicle
-
-**Load Apollo LM** loads the Apollo Lunar Module descent stage
-([presets/spacecraft/apollo_lm.json](presets/spacecraft/apollo_lm.json)), built
-from [LUNAR_DATA.md](LUNAR_DATA.md). Its ideal descent delta-v (2,033 m/s) agrees
-with the published 2,004 m/s budget to 1.4%. Only values the data package
-supports are entered, as `estimated` until checked against primary sources; the
-readiness panel still blocks on the two items the package could not find
-(allowable touchdown tilt/rate and engine ground clearance). The suspect
-4,932 kg Apollo 11 touchdown mass is deliberately not used.
-
-`spacecraft/reference_data.py` holds the Apollo 11 site, GRGM1200A gravity,
-SLDEM2015 terrain, descent profile, proposed touchdown limits, touchdown
-reconstructions, and the data-gap register, each with provenance. The
-simulation does not consume them yet.
-
-## Project structure
+## Project Structure
 
 ```text
-app.py                   Entry point
-spacecraft/              Domain model (no UI/GL imports)
-  components.py          Engine, FuelTank, Payload, PowerSystem + illustrative catalog
-  propulsion.py          Throttle, ignition/restart, gimbal data
-  provenance.py          Data source/quality/uncertainty records
-  vehicle.py             Spacecraft assembly, landing gear, attitude limits
-  mass_properties.py     Mass, centre of mass, inertia, static tip-over angle
-  readiness.py           Reports missing/untraceable vehicle data
-  apollo_lm.py           Apollo LM reference vehicle builder
-  reference_data.py      Apollo 11 site, gravity, terrain, descent, validation data
-  analysis.py            Ideal performance and mission budgets
-  geometry.py            3D layout: primitive meshes + per-part transforms
-  mission.py, lunar.py   Lambert transfer + ephemeris propagation
-  presets.py             JSON save/load
-viewport/
-  orbit_camera.py        Turntable camera
-  spacecraft_viewport.py Draws the layout, grid, highlight; picking
-rendering/
-  opengl_renderer.py     Offscreen moderngl renderer (MSAA, lit meshes, ID picking)
+.
+├── app.py                 # Main application entrypoint
+├── simulation.py          # Base simulation logic
+├── requirements.txt
+├── pyproject.toml
+├── setup.sh
+├── setup.ps1
+├── run.sh
+├── run.ps1
+├── test.sh
+├── test.ps1
+├── presets/
+│   └── default.json
+├── recordings/
+└── tests/
+    └── test_simulation.py
+```
+
+## Quick Start
+
+## Supported Python Versions
+
+This project currently supports:
+
+- Python 3.11
+
+Python 3.14+ is not currently supported by Taichi.
+### Clone the repository
+
+```bash
+git clone <repo-url>
+cd sim-template
+```
+
+### Setup
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\setup.ps1
+```
+
+### Activate Environment
+
+Linux / macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+## Visual Studio Setup (Windows)
+
+### Prerequisites
+
+Install:
+
+- Python 3.11+
+- Visual Studio with Python Development workload
+- Git (optional)
+
+Verify Python is installed:
+
+```powershell
+python --version
+```
+
+or
+
+```powershell
+py --version
+```
+
+---
+
+### Create a Virtual Environment
+
+Open a terminal in the project root:
+
+```powershell
+python -m venv .venv
+```
+
+If that fails:
+
+```powershell
+py -m venv .venv
+```
+
+This creates a local virtual environment in:
+
+```text
+.venv/
+```
+
+---
+
+### Activate the Virtual Environment
+
+PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+You should now see:
+
+```text
+(.venv) PS C:\...\SimulationHackathonFramework>
+```
+
+---
+
+### Install Dependencies
+
+```powershell
+python -m pip install --upgrade pip
+
+pip install -r requirements.txt
+```
+
+---
+
+### Configure Visual Studio
+
+1. Open the project folder.
+2. Open **Python Environments**.
+3. Select the `.venv` environment.
+4. Set `app.py` as the startup file.
+
+---
+
+### Running the Application
+
+From Visual Studio:
+
+- Press **F5** to run with debugging.
+- Press **Ctrl + F5** to run without debugging.
+
+Or from the terminal:
+
+```powershell
+python app.py
+```
+
+Windows PowerShell:
+
+```powershell
+.\run.ps1
+```
+
+---
+
+### Running Tests
+
+Run all tests:
+
+```powershell
+pytest
+```
+
+Verbose output:
+
+```powershell
+pytest -v
+```
+
+Windows PowerShell:
+
+```powershell
+.\test.ps1
+```
+
+Coverage:
+
+```powershell
+pytest --cov
+```
+
+---
+
+### Common Issues
+
+#### PowerShell Execution Policy
+
+If activation fails with an execution policy error:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Then activate again:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+#### Virtual Environment Not Found
+
+Make sure you have created it first:
+
+```powershell
+python -m venv .venv
+```
+
+#### Requirements Installation Fails
+
+Upgrade pip and retry:
+
+```powershell
+python -m pip install --upgrade pip
+
+pip install -r requirements.txt
+```
+
+---
+
+### Verify Installation
+
+Run:
+
+```powershell
+python -c "import taichi as ti; print(ti.__version__)"
+```
+
+Expected output:
+
+```text
+1.x.x
+```
+
+If a version number is displayed, Taichi is installed correctly.
+
+The application attempts to use the GPU first and automatically falls back to
+the CPU when a compatible GPU backend is unavailable.
+
+### Run
+
+```bash
+./run.sh
+```
+
+or
+
+```bash
+python app.py
+```
+
+## Testing
+
+Run all tests:
+
+```bash
+./test.sh
+```
+
+or
+
+```bash
+pytest -v
+```
+
+Generate coverage:
+
+```bash
+pytest --cov
+```
+
+## Creating a New Simulation
+
+### 1. Create a Simulation Class
+
+Inside `simulations/` create a new file:
+
+```text
+simulations/
+└── my_simulation.py
+```
+
+Example:
+
+```python
+from simulations.base import Simulation
+
+class MySimulation(Simulation):
+    pass
+```
+
+---
+
+### 2. Define Editable Parameters
+
+Create parameters inside `__init__`:
+
+```python
+from parameters import Parameter
+
+self.parameters = {
+    "speed": Parameter(
+        "Speed",
+        10.0,
+        0.0,
+        50.0,
+    ),
+    "radius": Parameter(
+        "Radius",
+        0.01,
+        0.001,
+        0.05,
+    ),
+}
+```
+
+Each parameter automatically generates a UI slider.
+
+---
+
+### 3. Use Parameters in Simulation Logic
+
+Access parameter values through:
+
+```python
+speed = self.parameters["speed"].value
+radius = self.parameters["radius"].value
+```
+
+Example:
+
+```python
+def step(self):
+    speed = self.parameters["speed"].value
+
+    self._step(speed)
+```
+
+---
+
+### 4. Implement Required Methods
+
+```python
+def reset(self):
+    pass
+
+def step(self):
+    pass
+
+def render(self, canvas):
+    pass
+```
+
+---
+
+### 5. Register the Simulation
+
+Edit:
+
+```python
+simulations/__init__.py
+```
+
+```python
+from .my_simulation import MySimulation
+```
+
+---
+
+### 6. Launch It
+
+In `app.py`:
+
+```python
+simulation = MySimulation()
+```
+
+The UI will automatically display all parameters defined in:
+
+```python
+self.parameters
+```
+## Configuration
+
+Simulation presets live in:
+
+```text
+presets/
+```
+
+Example:
+
+```json
+{
+    "gravity": 9.81,
+    "dt": 0.01,
+    "particle_count": 1000
+}
+```
+
+## Recommended Workflow
+
+1. Build simulation kernel
+2. Expose parameters in UI
+3. Add presets
+4. Add recording/export
+5. Create demo scenario
+6. Prepare final presentation
+
+## Dependencies
+
+Core libraries:
+
+- taichi
+- dearpygui
+- numpy
+- pandas
+- scipy
+- astropy
+- jplephem
+- certifi
+- pyyaml
+- matplotlib
+- imageio
+- pytest
+
+## Hackathon Tips
+
+- Keep parameters configurable.
+- Build recording support early.
+- Always have a stable demo preset.
+- Track FPS and simulation statistics.
+- Favor reliability over complexity.
+
+# Framework Progress
+
+## Version 0.1 - Initial Framework
+
+### Completed Features
+
+#### Simulation Architecture
+
+Moved simulation logic out of `app.py`.
+
+Before:
+
+```text
+app.py
+ ├─ physics
+ ├─ rendering
+ ├─ ui
+ └─ window
+```
+
+After:
+
+```text
+app.py
+ ├─ application lifecycle
+ ├─ main loop
+ └─ simulation orchestration
+
+simulations/
+ └─ bouncing_balls.py
+```
+
+Benefits:
+
+- Simulations are isolated
+- Easy to add new simulations
+- Cleaner project structure
+
+---
+
+#### Simulation Package
+
+Added:
+
+```text
+simulations/
+├── __init__.py
+├── base.py
+└── bouncing_balls.py
+```
+
+Purpose:
+
+- Encapsulate simulation implementations
+- Support multiple simulation types
+
+Future:
+
+```text
+boids.py
+fluid.py
+cloth.py
+reaction_diffusion.py
+```
+
+---
+
+#### UI Package
+
+Added:
+
+```text
 ui/
-  designer_application.py  Wires panel, input, viewport, renderer
-  spacecraft_designer.py   Designer panel
-  dpg_input_source.py      Mouse/scroll state for the viewport image
-  layout.py, application.py DearPyGui window and viewport setup
-core/                    Event bus, performance monitor
-presets/spacecraft/      Starter design
+├── __init__.py
+└── controls.py
+```
+
+Purpose:
+
+- Separate UI from simulation logic
+- Centralized framework controls
+
+Current Controls:
+
+- Pause
+- Reset
+
+Future Controls:
+
+- FPS counter
+- Screenshot
+- Recording
+- Simulation selector
+
+---
+
+#### Parameter System
+
+Added:
+
+```python
+class Parameter
+```
+
+in:
+
+```text
+parameters.py
+```
+
+Purpose:
+
+- Define editable simulation values
+- Automatically generate UI controls
+
+Example:
+
+```python
+Parameter(
+    "Gravity",
+    9.8,
+    0.0,
+    20.0,
+)
+```
+
+---
+
+#### Automatic Parameter UI
+
+Parameters are stored in:
+
+```python
+self.parameters
+```
+
+Example:
+
+```python
+self.parameters = {
+    "gravity": Parameter(...),
+    "radius": Parameter(...),
+    "damping": Parameter(...),
+}
+```
+
+The UI automatically creates sliders for all parameters:
+
+```python
+for parameter in simulation.parameters.values():
+```
+
+No UI changes are required when adding new parameters.
+
+Benefits:
+
+- Rapid iteration
+- Reusable framework
+- Less duplicated code
+
+---
+
+#### Parameter-Driven Simulation
+
+Removed hardcoded values:
+
+Before:
+
+```python
+9.8
+0.9
+0.01
+```
+
+After:
+
+```python
+self.parameters["gravity"].value
+self.parameters["damping"].value
+self.parameters["radius"].value
+```
+
+Benefits:
+
+- Runtime editing
+- Better experimentation
+- Hackathon-friendly workflow
+
+---
+
+#### Bouncing Balls Demo
+
+Implemented:
+
+- Particle initialization
+- Gravity
+- Ground collision
+- Damping
+- Runtime parameter editing
+
+Purpose:
+
+- Validate framework architecture
+- Test UI integration
+- Test Taichi rendering pipeline
+
+---
+
+## Current Architecture
+
+```text
+SimulationHackathonFramework/
+│
+├── app.py
+├── parameters.py
+│
+├── simulations/
+│   ├── __init__.py
+│   ├── base.py
+│   └── bouncing_balls.py
+│
+├── ui/
+│   ├── __init__.py
+│   └── controls.py
+│
+├── tests/
+│
+├── requirements.txt
+├── README.md
+└── pyproject.toml
+```
+
+---
+# Framework Progress
+
+## Version 0.2 - Plugin Architecture Foundation
+
+This milestone transitions the project from a single hardcoded simulation into a simulation framework capable of discovering and managing simulations dynamically.
+
+---
+
+# Completed Features
+
+## Simulation Architecture
+
+Simulation logic has been fully separated from application lifecycle management.
+
+### Application Responsibilities
+
+```text
+app.py
+├── Taichi initialization
+├── Window management
+├── Main loop
+├── Input processing
+├── Simulation orchestration
+└── UI orchestration
+```
+
+### Simulation Responsibilities
+
+```text
+simulations/
+├── base.py
+└── bouncing_balls.py
+```
+
+### Benefits
+
+- Clear separation of concerns
+- Easier maintenance
+- New simulations can be added independently
+- Foundation for plugins and scripting
+
+---
+
+## Base Simulation Interface
+
+All simulations inherit from:
+
+```python
+class Simulation(ABC):
+```
+
+Required methods:
+
+```python
+reset()
+step()
+render(canvas, camera)
+```
+
+Metadata support:
+
+```python
+name
+author
+version
+```
+
+Example:
+
+```python
+class BouncingBalls(Simulation):
+    name = "Bouncing Balls"
+    author = "You"
+    version = "0.1"
+```
+
+### Benefits
+
+- Standardized simulation contract
+- Consistent behavior across simulations
+- Automatic registration support
+
+---
+
+## Parameter System
+
+Framework-level parameter abstraction:
+
+```python
+class Parameter:
+```
+
+Example:
+
+```python
+Parameter(
+    "Gravity",
+    9.8,
+    0.0,
+    20.0
+)
+```
+
+Current usage:
+
+```python
+self.parameters = {
+    "gravity": Parameter(...),
+    "damping": Parameter(...),
+    "radius": Parameter(...),
+}
+```
+
+### Benefits
+
+- Runtime editing
+- UI auto-generation
+- Future preset serialization
+- Future scripting support
+
+---
+
+## Automatic Parameter UI
+
+UI controls are generated automatically.
+
+Example:
+
+```python
+for parameter in simulation.parameters.values():
+```
+
+The framework creates:
+
+```text
+Gravity Slider
+Damping Slider
+Radius Slider
+```
+
+without requiring custom UI code.
+
+### Benefits
+
+- Rapid development
+- Minimal boilerplate
+- Scales to future simulations
+
+---
+
+## Simulation Registry
+
+Added:
+
+```text
+registry.py
+```
+
+### Purpose
+
+- Central storage of available simulations
+- Automatic simulation discovery
+- Dynamic instantiation
+
+Registry structure:
+
+```python
+SIMULATIONS = {}
+```
+
+Example registration:
+
+```python
+@register_simulation
+class BouncingBalls(Simulation):
+    ...
+```
+
+Result:
+
+```python
+SIMULATIONS = {
+    "Bouncing Balls": BouncingBalls
+}
+```
+
+### Benefits
+
+- No hardcoded simulation lists
+- Dynamic framework discovery
+- Required for plugins and hot reloading
+
+---
+
+## Plugin Loader
+
+Added:
+
+```text
+plugin_loader.py
+```
+
+### Purpose
+
+- Discover simulations automatically
+- Import simulation modules dynamically
+- Populate the simulation registry
+
+Example:
+
+```python
+load_simulations()
+```
+
+Loader scans:
+
+```text
+simulations/
+├── bouncing_balls.py
+├── boids.py
+├── fluid.py
+└── cloth.py
+```
+
+Every discovered simulation is automatically registered.
+
+### Benefits
+
+- Zero manual registration
+- Plugin architecture foundation
+- Future drop-in simulation support
+
+---
+
+## Plugin-Based Simulation Creation
+
+Simulations can now be created through the registry.
+
+Example:
+
+```python
+simulation = SIMULATIONS[
+    "Bouncing Balls"
+]()
+```
+
+Future:
+
+```python
+simulation = create_simulation(
+    "Boids"
+)
+```
+
+### Benefits
+
+- Dynamic simulation switching
+- No direct imports required
+- Supports UI-driven selection
+
+---
+
+## Bouncing Balls Demo
+
+Current reference simulation.
+
+### Implemented
+
+- Particle initialization
+- Gravity
+- Ground collision
+- Damping
+- Camera support
+- Runtime parameter editing
+
+### Purpose
+
+- Validate architecture
+- Validate registry system
+- Validate plugin loading
+- Validate parameter framework
+
+---
+
+## Testing Infrastructure
+
+Added:
+
+```text
 tests/
 ```
 
-The renderer draws into an offscreen framebuffer and uploads it to a DearPyGui
-dynamic texture each frame. Picking re-renders component IDs into a second
-buffer only when the cursor moves or clicks.
+Framework now includes automated tests.
 
-## Setup
+### Registry
 
-Requires Python 3.11 and a GPU/driver with OpenGL 3.3.
-
-```powershell
-.\setup.ps1   # create .venv and install requirements
-.\run.ps1     # launch the configurator
-.\test.ps1    # run the tests
+```text
+✓ Simulation registration
+✓ Registry population
 ```
 
-On macOS/Linux use `setup.sh`, `run.sh`, and `test.sh`.
+### Plugin Loading
 
-See [docs/LUNAR_LANDING_ROADMAP.md](docs/LUNAR_LANDING_ROADMAP.md) for the
-project's definition of a successful lunar landing and the fidelity roadmap.
+```text
+✓ Dynamic discovery
+✓ Import loading
+```
+
+### Parameters
+
+```text
+✓ Parameter creation
+✓ Parameter storage
+```
+
+### Simulation Metadata
+
+```text
+✓ Name
+✓ Author
+✓ Version
+```
+
+### Simulation Creation
+
+```text
+✓ Registry-based instantiation
+```
+
+### UI Controls
+
+```text
+✓ Control state management
+✓ Pause functionality
+```
+
+### Current Status
+
+```text
+10/10 tests passing
+```
+
+---
+
+# Current Architecture
+
+```text
+SimulationHackathonFramework/
+│
+├── app.py
+├── registry.py
+├── plugin_loader.py
+├── parameters.py
+│
+├── simulations/
+│   ├── __init__.py
+│
+```
+
+# Version 0.3 - Application Architecture & Editor Foundation
+
+This milestone transforms the framework from a collection of interconnected systems into a structured application architecture with clear ownership boundaries, rendering abstraction, and event-driven communication.
+
+---
+
+# Major Architectural Refactor
+
+## Previous Architecture (v0.2)
+
+```text
+app.py
+│
+├── Taichi Initialization
+├── Plugin Loading
+├── SimulationManager
+├── InputManager
+├── SimulationUI
+├── Window Creation
+├── Main Loop
+└── DearPyGui Lifecycle
+```
+
+`app.py` acted as the application's God Object and contained responsibilities from every subsystem.
+
+---
+
+## New Architecture (v0.3)
+
+```text
+app.py
+│
+├── Application
+│     └── DearPyGui Lifecycle
+│
+└── SimulationApplication
+      │
+      ├── EventBus
+      ├── SimulationManager
+      ├── SimulationUI
+      ├── InputManager
+      └── TaichiRenderer
+```
+
+### Benefits
+
+- Clear ownership boundaries
+- Better separation of concerns
+- Easier testing
+- Reduced coupling
+- Foundation for editor-style workflow
+- Enables future plugin ecosystem
+
+---
+
+# Application Lifecycle System
+
+Added:
+
+```text
+ui/
+└── application.py
+```
+
+```python
+class Application:
+```
+
+### Responsibilities
+
+- DearPyGui Context Creation
+- Viewport Creation
+- Frame Rendering
+- Application Shutdown
+
+### Example
+
+```python
+app = Application()
+
+app.initialize()
+
+while app.running():
+
+    app.render()
+
+app.shutdown()
+```
+
+### Benefits
+
+- UI lifecycle isolated
+- No DPG management in feature code
+- Easier future editor integration
+
+---
+
+# Simulation Application Layer
+
+Added:
+
+```text
+ui/
+└── simulation_application.py
+```
+
+```python
+class SimulationApplication:
+```
+
+### Responsibilities
+
+- Simulation Orchestration
+- Input Handling
+- Simulation Updates
+- Renderer Coordination
+- UI Coordination
+
+### Example
+
+```python
+simulation_app = (
+    SimulationApplication()
+)
+
+simulation_app.initialize()
+
+simulation_app.update()
+
+simulation_app.render()
+```
+
+### Benefits
+
+- Application behavior centralized
+- Cleaner startup process
+- Easier future extension
+
+---
+
+# Renderer Abstraction
+
+Added:
+
+```text
+rendering/
+├── __init__.py
+└── taichi_renderer.py
+```
+
+```python
+class TaichiRenderer:
+```
+
+### Responsibilities
+
+- Window Creation
+- Canvas Management
+- Frame Lifecycle
+- Simulation Rendering
+- Presentation
+
+### Example
+
+```python
+renderer.begin_frame()
+
+renderer.render(
+    simulation,
+    camera,
+)
+
+renderer.end_frame()
+```
+
+### Benefits
+
+- Rendering backend isolated
+- Future OpenGL/Vulkan support possible
+- Future embedded viewport support
+- Reduced coupling to Taichi
+
+---
+
+# Event System
+
+Added:
+
+```text
+core/
+├── __init__.py
+└── event_bus.py
+```
+
+```python
+class EventBus:
+```
+
+### Supports
+
+```python
+publish()
+subscribe()
+```
+
+### Example
+
+```python
+events.publish(
+    "simulation.load",
+    "Boids",
+)
+```
+
+```python
+events.subscribe(
+    "simulation.load",
+    manager.load,
+)
+```
+
+### Benefits
+
+- Event-driven architecture
+- Reduced component coupling
+- Foundation for plugins
+- Foundation for scripting
+- Foundation for console commands
+- Foundation for networking
+
+---
+
+# UI Refactor
+
+SimulationUI now communicates through events.
+
+### Previous
+
+```python
+self.manager.load(
+    simulation_name
+)
+```
+
+### Current
+
+```python
+self.events.publish(
+    "simulation.load",
+    simulation_name,
+)
+```
+
+### Previous
+
+```python
+self.manager.reset()
+```
+
+### Current
+
+```python
+self.events.publish(
+    "simulation.reset"
+)
+```
+
+### Benefits
+
+- UI no longer directly controls systems
+- Cleaner architecture
+- Extensible communication pipeline
+
+---
+
+# Main Loop Refactor
+
+### Previous
+
+```python
+input_manager.update(...)
+
+manager.step()
+
+manager.render(...)
+
+ui.render()
+```
+
+### Current
+
+```python
+simulation_app.update()
+
+simulation_app.render()
+
+app.render()
+```
+
+### Benefits
+
+- Higher-level orchestration
+- Cleaner startup file
+- Clear subsystem ownership
+
+---
+
+# App.py Simplification
+
+The application entry point has been reduced to orchestration only.
+
+### Current Responsibilities
+
+- Taichi Initialization
+- Plugin Discovery
+- Application Startup
+- Main Loop
+- Shutdown
+
+### No Longer Responsible For
+
+- Window Management
+- Rendering
+- Simulation Coordination
+- Input Handling
+- UI Lifecycle
+
+---
+
+# Current Folder Structure
+
+```text
+SimulationHackathonFramework/
+│
+├── app.py
+│
+├── core/
+│   ├── __init__.py
+│   └── event_bus.py
+│
+├── rendering/
+│   ├── __init__.py
+│   └── taichi_renderer.py
+│
+├── ui/
+│   ├── __init__.py
+│   ├── application.py
+│   ├── controls.py
+│   ├── layout.py
+│   └── simulation_application.py
+│
+├── simulations/
+│   ├── __init__.py
+│   ├── base.py
+│   └── bouncing_balls.py
+│
+├── simulation_manager.py
+├── plugin_loader.py
+├── registry.py
+├── parameters.py
+└── app.py
+```
+
+---
+
+# Design Goals Achieved
+
+## Separation of Concerns
+
+```text
+Application
+↓
+UI Lifecycle
+```
+
+```text
+SimulationApplication
+↓
+Simulation Coordination
+```
+
+```text
+TaichiRenderer
+↓
+Rendering
+```
+
+```text
+SimulationManager
+↓
+Simulation State
+```
+
+---
+
+## Reduced Coupling
+
+### Previous
+
+```text
+SimulationUI
+    ↓
+SimulationManager
+```
+
+### Current
+
+```text
+SimulationUI
+      ↓
+   EventBus
+      ↓
+SimulationManager
+```
+
+---
+
+## Editor Foundation
+
+The framework is now structured more like a simulation editor than a standalone demo application.
+
+Future systems can connect through events:
+
+```text
+Console
+Keyboard Shortcuts
+Plugins
+Replay System
+Timeline
+Python Scripts
+Networking
+Node Editor
+```
+
+---
+
+# Current Status
+
+## Implemented
+
+✅ Application Lifecycle Layer
+
+✅ Simulation Application Layer
+
+✅ Renderer Abstraction
+
+✅ Event Bus System
+
+✅ Reduced Coupling
+
+✅ Cleaner Main Loop
+
+✅ Editor-Oriented Architecture
+
+✅ Dynamic Plugin Loading
+
+✅ Parameter System
+
+✅ Auto-Generated UI Controls
+
+✅ Runtime Simulation Switching
+
+✅ Bouncing Balls Reference Simulation
+
+---
+
+# Testing Status
+
+Framework architecture remains compatible with:
+
+```text
+✓ Simulation Registration
+✓ Plugin Discovery
+✓ Simulation Creation
+✓ Parameters
+✓ Metadata
+✓ UI Controls
+✓ Simulation Manager
+```
+
+Target:
+
+```text
+10/10 Tests Passing
+```
+
+---
+
+# Roadmap
+
+## v0.3.x
+
+### Framework
+
+- FPS Display
+- Logging System
+- Console Window
+- Event Constants
+- Keyboard Shortcuts
+- Preset Serialization
+- Save/Load Parameters
+
+### Simulations
+
+- Boids
+- Particle Life
+- Reaction Diffusion
+
+---
+
+## v0.4
+
+### Tooling
+
+- Replay System
+- Timeline Scrubber
+- Recording
+- Screenshots
+- Session Serialization
+
+---
+
+## v0.5
+
+### Extensibility
+
+- Embedded Python Runtime
+- Hot Reloading (watchdog)
+- API Introspection
+- Script Templates
+
+---
+
+## v1.0
+
+### Editor Features
+
+- Integrated Documentation
+- Node Editor
+- Drag-and-Drop Simulation Graph
+- Embedded Simulation Viewport
+- Complete Plugin Ecosystem
+
+---
+
+# Summary
+
+Version **0.3** introduces the framework's first true application architecture.
+
+The project has evolved from a simulation demo into a modular simulation framework with a clear separation between:
+
+- Application Lifecycle
+- Rendering
+- Simulation Management
+- User Interface
+- Event Communication
+
+The framework is now positioned for advanced editor-style tooling, scripting, replay systems, hot reloading, and a full plugin ecosystem.
+
+
+### Quality
+
+- [ ] Additional tests
+- [ ] Configuration presets
+- [ ] Save/load parameter profiles
