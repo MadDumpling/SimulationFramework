@@ -12,6 +12,35 @@ A reusable Python template for building interactive simulations with Taichi. The
 - Screenshot and recording support
 - Pytest testing setup
 - Modular architecture for rapid prototyping
+- Spacecraft Designer MVP with component assembly and ideal performance analysis
+
+## Spacecraft Designer MVP
+
+The application opens directly into the **Spacecraft Designer** for assembling
+engines, propellant tanks, payloads, and power systems. Component properties can
+be edited directly; mass, ideal single-stage delta-v, TWR, burn time, and power
+balance update as the design changes. The panel also includes a schematic preview
+and JSON save/load controls. Select a component in the assembly list and move it
+around the schematic with **W/A/S/D**; layout positions are saved with the design.
+The bouncing-balls and boids examples are no longer launched by default. The
+starter spacecraft design is stored in
+[presets/spacecraft/spacecraft_mvp.json](presets/spacecraft/spacecraft_mvp.json).
+
+The **Run Lunar Mission Simulation** workflow takes a UTC departure date and
+transfer duration, solves a Lambert transfer, then numerically propagates the
+spacecraft with Sun/Earth/Moon gravity against the JPL DE440s ephemeris. It reports
+whether the trajectory reaches the Moon's Laplace sphere of influence, plus
+required injection delta-v, closest approach, and predicted surface impact. The
+DE440s kernel is downloaded securely on first use and cached locally.
+
+This first mission mode is a trajectory screening simulation—not lunar orbit
+capture or landing. It assumes a phase-aligned 200 km circular parking orbit,
+impulsive transfer injection, a 9.4 km/s Earth-ascent allowance, and ideal
+rocket-equation vehicle delta-v. Atmospheric flight, launch site/azimuth,
+staging, finite burns, detailed engine curves, guidance, and launch-window
+optimization are not modeled. Catalog data is illustrative; enter verified
+spacecraft masses and engine performance for meaningful results. A surface impact
+is reported separately and is not treated as a landing.
 
 ## Project Structure
 
@@ -440,6 +469,10 @@ Core libraries:
 - dearpygui
 - numpy
 - pandas
+- scipy
+- astropy
+- jplephem
+- certifi
 - pyyaml
 - matplotlib
 - imageio

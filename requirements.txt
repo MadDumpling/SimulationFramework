@@ -3,6 +3,10 @@ dearpygui==2.1.1
 
 numpy==1.26.4
 pandas==2.0.3
+scipy>=1.11,<2
+astropy>=6.1,<8
+jplephem>=2.22
+certifi>=2024.2.2
 
 imageio>=2.36.0
 imageio-ffmpeg>=0.5.1
