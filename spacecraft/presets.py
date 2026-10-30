@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from .appearance import SpacecraftAppearance
 from .components import (
     component_from_dict,
     component_to_dict,
@@ -36,6 +37,7 @@ def save_spacecraft(spacecraft: Spacecraft, filepath: str | Path) -> None:
             if spacecraft.attitude_limits is not None
             else None
         ),
+        "appearance": dataclass_to_dict(spacecraft.appearance),
         "components": [
             component_to_dict(component) for component in spacecraft.components
         ],
@@ -76,6 +78,7 @@ def load_spacecraft(filepath: str | Path) -> Spacecraft:
         ("provenance", DataProvenance),
         ("landing_gear", LandingGear),
         ("attitude_limits", AttitudeLimits),
+        ("appearance", SpacecraftAppearance),
     ):
         if data.get(key) is not None:
             optional[key] = dataclass_from_dict(cls, data[key])

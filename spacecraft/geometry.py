@@ -26,6 +26,7 @@ from .components import (
     RcsThruster,
     SolarPanel,
 )
+from .appearance import PAINT_SCHEMES
 from .mass_properties import mass_properties
 from .transforms import (  # noqa: F401  (re-exported for existing callers)
     euler_xyz_degrees,
@@ -57,6 +58,25 @@ STRUCTURE_COLOR = (0.42, 0.45, 0.50)
 SEAM_COLOR = (0.25, 0.27, 0.31)
 GAUGE_COLOR = (0.25, 0.85, 0.95)
 CHAMBER_COLOR = (0.30, 0.30, 0.33)
+FLAG_COLORS = {
+    "R": (0.78, 0.12, 0.16),
+    "W": (0.94, 0.94, 0.90),
+    "B": (0.12, 0.25, 0.55),
+    "G": (0.10, 0.45, 0.25),
+    "O": (0.96, 0.58, 0.12),
+    "Y": (0.96, 0.76, 0.12),
+}
+FLAG_GRIDS = {
+    "United States": ("BBBRRRR", "BBBRRRR", "BBBRRRR", "WWWWWWW", "RRRRRRR"),
+    "Canada": ("RRWWWRR", "RRWWWRR", "RRWRWRR", "RRWWWRR", "RRWWWRR"),
+    "Japan": ("WWWWWWW", "WWRRRWW", "WWRRRWW", "WWRRRWW", "WWWWWWW"),
+    "India": ("OOOOOOO", "WWWWWWW", "WWWBWWW", "GGGGGGG", "GGGGGGG"),
+    "France": ("BBBWWRR",) * 5,
+    "Germany": ("BBBBBBB", "RRRRRRR", "RRRRRRR", "YYYYYYY", "YYYYYYY"),
+    "Italy": ("GGGWWRR",) * 5,
+    "United Kingdom": ("BBWWBBB", "BBBBBBB", "WWRRRWW", "BBBBBBB", "BBWWBBB"),
+    "China": ("RRYYRRR", "RYRYRRR", "RRRYRRR", "RRRRRRR", "RRRRRRR"),
+}
 
 
 @dataclass(frozen=True)
@@ -329,7 +349,15 @@ def layout_spacecraft(
 
     def add(component: Component | None, primitive_name: str, model, color=None):
         if color is None:
-            color = COMPONENT_COLORS.get(type(component), STRUCTURE_COLOR)
+            scheme = PAINT_SCHEMES[spacecraft.appearance.paint_scheme]
+            if isinstance(component, (FuelTank, Payload)):
+                color = scheme["primary"]
+            elif isinstance(component, (PowerSystem, Battery, Avionics)):
+                color = scheme["accent"]
+            elif isinstance(component, (Engine, LandingLeg, RcsThruster)):
+                color = scheme["trim"]
+            else:
+                color = COMPONENT_COLORS.get(type(component), STRUCTURE_COLOR)
         parts.append(
             PartVisual(
                 component.id if component is not None else None,
@@ -557,6 +585,57 @@ def layout_spacecraft(
             for part in layout.parts
         ]
         parts = layout.parts
+
+    if spacecraft.appearance.national_flag != "None" and tanks:
+        tank = max(tanks, key=lambda item: item.capacity)
+        tank_cylinders = [
+            part
+            for part in parts
+            if part.component_id == tank.id and part.primitive == "cylinder"
+        ]
+        if tank_cylinders:
+            tank_model = max(
+                tank_cylinders,
+                key=lambda part: float(np.linalg.norm(part.model[:3, 1])),
+            ).model
+            tank_radius = float(np.linalg.norm(tank_model[:3, 0]))
+            flag_width = tank_radius * 0.9
+            flag_height = flag_width * 5.0 / 7.0
+            tile_width = flag_width / 7.0
+            tile_height = flag_height / 5.0
+            x_axis = tank_model[:3, 0] / tank_radius
+            y_axis = tank_model[:3, 1] / np.linalg.norm(tank_model[:3, 1])
+            z_axis = tank_model[:3, 2] / np.linalg.norm(tank_model[:3, 2])
+            flag_center = tank_model @ np.array((0.0, 0.5, 1.02, 1.0))
+            flag_transform = translate(*flag_center[:3])
+            flag_transform[:3, :3] = np.column_stack((x_axis, y_axis, z_axis))
+            plate_depth = max(tank_radius * 0.018, 0.008)
+            parts.append(
+                PartVisual(
+                    None,
+                    "box",
+                    flag_transform
+                    @ scale(flag_width * 1.08, flag_height * 1.12, plate_depth),
+                    (0.08, 0.10, 0.14),
+                )
+            )
+            grid = FLAG_GRIDS[spacecraft.appearance.national_flag]
+            for row, pattern in enumerate(grid):
+                for column, symbol in enumerate(pattern):
+                    parts.append(
+                        PartVisual(
+                            None,
+                            "box",
+                            flag_transform
+                            @ translate(
+                                (column - 3) * tile_width,
+                                (2 - row) * tile_height,
+                                plate_depth * 0.55,
+                            )
+                            @ scale(tile_width * 1.02, tile_height * 1.02, plate_depth * 0.35),
+                            FLAG_COLORS[symbol],
+                        )
+                    )
 
     if include_analysis:
         properties = mass_properties(spacecraft)

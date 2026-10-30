@@ -173,6 +173,17 @@ run it again. The contrast is more useful than presenting a failure as simply
 
 The **Design** tab is where you assemble and arrange the spacecraft.
 
+Use **Vehicle Livery** to personalize the 3D model before the demo:
+
+- **Paint scheme** changes the colors of the main hull and selected subsystem
+  hardware. Options include Orbital White, Deep Space, Lunar Gold, Arctic
+  Survey, and Forest Research.
+- **Flag decal** adds a small flag graphic to the largest propellant tank.
+  Choose a country or **None** to hide it.
+- These choices are saved with the spacecraft preset, but are strictly visual:
+  they do not change mass, mission calculations, readiness, or simulation
+  outcomes.
+
 At the top, use **Choose a preset** and **Load preset** to quickly switch
 between the Lunar Demo, Apollo Lunar Module reference vehicle, starter design,
 and individual failure examples. Selecting an option only previews it; click
