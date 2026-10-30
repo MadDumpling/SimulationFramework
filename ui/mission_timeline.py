@@ -11,19 +11,20 @@ class MissionMilestone:
     reason: str = ""
 
 
-def mission_timeline(result=None) -> list[MissionMilestone]:
+def mission_timeline(result=None, running: bool = False) -> list[MissionMilestone]:
     """Return visible milestones; sphere-of-influence entry never means landing."""
     if result is None:
+        launch_state = "SIMULATING" if running else "READY"
+        remaining_state = "PENDING" if running else "READY"
         return [
-            MissionMilestone("launch", "Launch", "READY"),
-            MissionMilestone("earth_orbit", "Earth orbit", "READY"),
-            MissionMilestone("tli", "Trans-lunar injection", "READY"),
-            MissionMilestone("arrival", "Lunar arrival", "READY"),
-            MissionMilestone("touchdown", "Touchdown", "READY"),
+            MissionMilestone("launch", "Launch", launch_state),
+            MissionMilestone("earth_orbit", "Earth orbit", remaining_state),
+            MissionMilestone("tli", "Trans-lunar injection", remaining_state),
+            MissionMilestone("arrival", "Lunar arrival", remaining_state),
+            MissionMilestone("touchdown", "Touchdown", remaining_state),
         ]
 
     if not result.simulated:
-        stopped = "FAILED"
         stop_reason = result.reasons[0] if result.reasons else "Vehicle precheck failed."
         return [
             MissionMilestone("launch", "Launch", "FAILED", stop_reason),
@@ -40,9 +41,24 @@ def mission_timeline(result=None) -> list[MissionMilestone]:
         else "Propagated trajectory missed the lunar sphere of influence."
     )
     return [
-        MissionMilestone("launch", "Launch", "SCREENED", "Launch/ascent is an allowance, not simulated."),
-        MissionMilestone("earth_orbit", "Earth orbit", "SCREENED", "Circular parking orbit is assumed."),
-        MissionMilestone("tli", "Trans-lunar injection", "SCREENED", f"Required {result.tli_delta_v.to_value('km/s'):.2f} km/s."),
+        MissionMilestone(
+            "launch",
+            "Launch",
+            "SCREENED",
+            "Launch/ascent is an allowance, not simulated.",
+        ),
+        MissionMilestone(
+            "earth_orbit",
+            "Earth orbit",
+            "SCREENED",
+            "Circular parking orbit is assumed.",
+        ),
+        MissionMilestone(
+            "tli",
+            "Trans-lunar injection",
+            "SCREENED",
+            f"Required {result.tli_delta_v.to_value('km/s'):.2f} km/s.",
+        ),
         MissionMilestone("arrival", "Lunar arrival", arrival_state, arrival_reason),
         MissionMilestone(
             "touchdown",

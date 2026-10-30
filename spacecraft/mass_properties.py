@@ -23,11 +23,21 @@ def mass_properties(spacecraft: Spacecraft, include_propellant: bool = True) -> 
     Approximations: component inertias are principal values about their own
     centre of mass with axes aligned to the vehicle (products of inertia are
     ignored), and loaded propellant is a point mass at its tank's centre of
-    mass (no slosh or fill-level shift).
+    mass (no slosh or fill-level shift). Explicit component placements transform
+    each known COM from its automatic-layout position into the current assembly.
     """
     result = MassProperties()
     weighted = [0.0, 0.0, 0.0]
     entries = []  # (mass, com, inertia or None for point masses)
+    if any(
+        part.placement is not None and part.com_m is not None
+        for part in spacecraft.components
+    ):
+        from .geometry import component_com_positions
+
+        com_positions = component_com_positions(spacecraft)
+    else:
+        com_positions = {}
 
     for part in spacecraft.components:
         propellant = part.fuel_mass if include_propellant and isinstance(part, FuelTank) else 0.0
@@ -35,14 +45,15 @@ def mass_properties(spacecraft: Spacecraft, include_propellant: bool = True) -> 
         result.mass += mass
         if mass == 0.0:
             continue
-        if part.com_m is None:
+        com = com_positions.get(part.id, part.com_m)
+        if com is None:
             result.missing_com.append(part.name)
             continue
-        entries.append((part.dry_mass, part.com_m, part.inertia_kgm2, part.name))
+        entries.append((part.dry_mass, com, part.inertia_kgm2, part.name))
         if propellant > 0.0:
-            entries.append((propellant, part.com_m, (0.0, 0.0, 0.0), part.name))
+            entries.append((propellant, com, (0.0, 0.0, 0.0), part.name))
         for axis in range(3):
-            weighted[axis] += mass * part.com_m[axis]
+            weighted[axis] += mass * com[axis]
 
     if result.missing_com or result.mass <= 0.0:
         return result
