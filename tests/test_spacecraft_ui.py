@@ -41,6 +41,30 @@ def test_architecture_summary_reports_actual_cluster_counts_and_target():
     assert "Mission target: Low Earth Orbit" in summary
 
 
+def test_builtin_preset_picker_loads_selected_preset_without_changing_save_path(
+    tmp_path,
+):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "my-design.json")
+
+    assert {
+        "Lunar Demo",
+        "Apollo Lunar Module (descent)",
+        "Starter spacecraft",
+        "Failure — insufficient lift-off thrust",
+        "Failure — insufficient Earth-ascent delta-v",
+        "Failure — insufficient TLI propellant",
+        "Failure — engine/tank propellant mismatch",
+    } <= set(ui.builtin_presets)
+
+    label = "Apollo Lunar Module (descent)"
+    ui.select_builtin_preset(None, label, None)
+    ui.load_builtin_preset()
+
+    assert ui.spacecraft.name == "Apollo Lunar Module (descent)"
+    assert ui.selected_builtin_preset == label
+    assert ui.preset_path == tmp_path / "my-design.json"
+
+
 def test_readiness_panel_discloses_screening_not_flight_readiness():
     ui = SpacecraftDesignerUI(EventBus())
     from spacecraft.mass_properties import mass_properties
@@ -524,6 +548,7 @@ def test_analysis_panel_reports_auxiliary_thrust_and_power_surplus():
     ui.add_component(None, None, "avionics")
     ui.built = True
     designer_module.dpg.set_value.reset_mock()
+    designer_module.dpg.configure_item.reset_mock()
 
     ui.refresh()
 
@@ -535,6 +560,11 @@ def test_analysis_panel_reports_auxiliary_thrust_and_power_surplus():
     assert "+2.05 kW surplus" in values["spacecraft_power"]
     assert "spacecraft_readiness_bar" in values
     assert values["health_power"].startswith("POWER  +2.05 kW")
+    assert not any(
+        call.args[0] == "spacecraft_readiness_bar"
+        and "color" in call.kwargs
+        for call in designer_module.dpg.configure_item.call_args_list
+    )
 
 
 def test_mirror_copy_reflects_placement_and_selects_the_copy(tmp_path):

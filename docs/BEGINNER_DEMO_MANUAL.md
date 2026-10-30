@@ -173,6 +173,15 @@ run it again. The contrast is more useful than presenting a failure as simply
 
 The **Design** tab is where you assemble and arrange the spacecraft.
 
+At the top, use **Choose a preset** and **Load preset** to quickly switch
+between the Lunar Demo, Apollo Lunar Module reference vehicle, starter design,
+and individual failure examples. Selecting an option only previews it; click
+**Load preset** to replace the current in-memory design. The status text
+confirms which preset loaded. This does not change the file used by **Save
+Design** or **Load Saved Design**. Those buttons operate on the current save
+path, while built-in presets are loaded independently. The older **Lunar Demo**
+and **Load Apollo LM** buttons remain as one-click shortcuts.
+
 **Add component** buttons create a new part with an editable illustrative
 starting value:
 
@@ -225,13 +234,13 @@ validate attachment strength, route cables, or simulate panel deployment.
 When moving a component, press `F` over the viewport if you need to bring the
 new overall assembly into view.
 
-**Save** and **Load** use the current preset path. In the default setup, that
-path is the bundled `presets/spacecraft/lunar_demo.json`. Be careful: using
-**Save** while working on the default design can overwrite that file. For a
-presentation, the safest option is to demonstrate without saving, or make a
-separate copy of the preset before editing it outside the app. **Clear
-Assembly** removes all parts from the current in-memory design; **Lunar Demo**
-restores the illustrative lunar example.
+**Save Design** and **Load Saved Design** use the current preset path. In the
+default setup, that path is the bundled `presets/spacecraft/lunar_demo.json`.
+Be careful: using **Save Design** while working on the default design can
+overwrite that file. For a presentation, the safest option is to demonstrate
+without saving, or make a separate copy of the preset before editing it
+outside the app. **Clear Assembly** removes all parts from the current
+in-memory design; **Lunar Demo** restores the illustrative lunar example.
 
 ### Analysis tab
 

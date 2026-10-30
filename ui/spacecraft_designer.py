@@ -57,6 +57,16 @@ DEFAULT_PRESET = (
     / "spacecraft"
     / "lunar_demo.json"
 )
+PRESET_DIRECTORY = DEFAULT_PRESET.parent
+PRESET_LABELS = {
+    "apollo_lm": "Apollo Lunar Module (descent)",
+    "lunar_demo": "Lunar Demo",
+    "lunar_low_thrust": "Failure — insufficient lift-off thrust",
+    "lunar_ascent_shortfall": "Failure — insufficient Earth-ascent delta-v",
+    "lunar_tli_shortfall": "Failure — insufficient TLI propellant",
+    "lunar_propellant_mismatch": "Failure — engine/tank propellant mismatch",
+    "spacecraft_mvp": "Starter spacecraft",
+}
 SHOWCASE_SCENARIOS = {
     "Lunar encounter — no surface impact": {
         "preset": "lunar_demo.json",
@@ -119,6 +129,15 @@ class SpacecraftDesignerUI:
     def __init__(self, events, preset_path=DEFAULT_PRESET):
         self.events = events
         self.preset_path = Path(preset_path)
+        self.builtin_presets = self._discover_builtin_presets()
+        self.selected_builtin_preset = next(
+            (
+                label
+                for label, path in self.builtin_presets.items()
+                if path.name == DEFAULT_PRESET.name
+            ),
+            next(iter(self.builtin_presets), ""),
+        )
         self.spacecraft = self._load_starting_spacecraft()
         self.mission_id = "leo"
         self.analysis = analyze_spacecraft(self.spacecraft)
@@ -129,6 +148,16 @@ class SpacecraftDesignerUI:
         self._mission_run: _MissionRun | None = None
         self._mission_serial = 0
         self.built = False
+
+    @staticmethod
+    def _discover_builtin_presets():
+        presets = {}
+        for path in sorted(PRESET_DIRECTORY.glob("*.json")):
+            label = PRESET_LABELS.get(path.stem)
+            if label is None:
+                label = path.stem.replace("_", " ").title()
+            presets[label] = path
+        return presets
 
     def _load_starting_spacecraft(self):
         if self.preset_path.exists():
@@ -157,11 +186,32 @@ class SpacecraftDesignerUI:
                 on_enter=True,
                 tag="spacecraft_name_input",
             )
+            dpg.add_text("BUILT-IN SPACECRAFT PRESETS", bullet=True)
+            with dpg.group(horizontal=True):
+                dpg.add_combo(
+                    items=list(self.builtin_presets),
+                    default_value=self.selected_builtin_preset,
+                    label="Choose a preset",
+                    width=340,
+                    callback=self.select_builtin_preset,
+                    tag="spacecraft_builtin_preset",
+                )
+                dpg.add_button(
+                    label="Load preset",
+                    callback=self.load_builtin_preset,
+                )
+            dpg.add_text(
+                "Choose a design or failure example, then load it. "
+                "This does not change the Save/Load file path.",
+                tag="spacecraft_preset_status",
+                wrap=460,
+                color=(175, 190, 210),
+            )
+            with dpg.group(horizontal=True):
+                dpg.add_button(label="Save Design", callback=self.save)
+                dpg.add_button(label="Load Saved Design", callback=self.load)
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Load Apollo LM", callback=self.load_apollo_lm)
-                dpg.add_button(label="Save", callback=self.save)
-                dpg.add_button(label="Load", callback=self.load)
-            with dpg.group(horizontal=True):
                 dpg.add_button(label="Lunar Demo", callback=self.load_lunar_demo)
                 dpg.add_button(label="Clear Assembly", callback=self.clear)
 
@@ -1257,20 +1307,78 @@ class SpacecraftDesignerUI:
 
     def load(self, sender=None, app_data=None, user_data=None):
         if not self.preset_path.exists():
+            self._set_preset_status(
+                f"No saved design exists at {self.preset_path}."
+            )
             return
         self.spacecraft = load_spacecraft(self.preset_path)
         self.select_component(None)
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._rebuild_component_controls()
         self.refresh()
+        self._set_preset_status(f"Loaded saved design: {self.spacecraft.name}")
+
+    def select_builtin_preset(self, sender, app_data, user_data):
+        if app_data not in self.builtin_presets:
+            self._set_preset_status(f"Unknown built-in preset: {app_data!r}")
+            return
+        self.selected_builtin_preset = app_data
+        self._set_preset_status(
+            f"Selected {app_data}. Click Load preset to replace the current design."
+        )
+
+    def load_builtin_preset(self, sender=None, app_data=None, user_data=None):
+        label = self.selected_builtin_preset
+        path = self.builtin_presets.get(label)
+        if path is None:
+            self._set_preset_status("No built-in spacecraft presets are available.")
+            return
+        try:
+            spacecraft = load_spacecraft(path)
+        except ValueError as error:
+            self._set_preset_status(f"Could not load {label}: {error}")
+            return
+        self._load_reference(spacecraft)
+        self._set_preset_status(
+            f"Loaded preset: {spacecraft.name}. "
+            f"Save Design still uses {self.preset_path.name}."
+        )
+
+    def _select_builtin_preset_for_path(self, path):
+        label = next(
+            (
+                item_label
+                for item_label, item_path in self.builtin_presets.items()
+                if item_path.resolve() == Path(path).resolve()
+            ),
+            None,
+        )
+        if label is None:
+            return
+        self.selected_builtin_preset = label
+        if dpg.does_item_exist("spacecraft_builtin_preset"):
+            dpg.set_value("spacecraft_builtin_preset", label)
+
+    @staticmethod
+    def _set_preset_status(message):
+        if dpg.does_item_exist("spacecraft_preset_status"):
+            dpg.set_value("spacecraft_preset_status", message)
 
     def load_apollo_lm(self, sender=None, app_data=None, user_data=None):
         """Load the Apollo LM reference vehicle without changing the save path."""
         self._load_reference(load_spacecraft(APOLLO_LM_PRESET))
+        self._select_builtin_preset_for_path(APOLLO_LM_PRESET)
+        self._set_preset_status(f"Loaded preset: {self.spacecraft.name}")
 
     def load_lunar_demo(self, sender=None, app_data=None, user_data=None):
         """Load an illustrative design that clears the lunar pre-screen."""
-        self._load_reference(build_lunar_demo())
+        preset_path = self.builtin_presets.get("Lunar Demo")
+        if preset_path is not None:
+            self._load_reference(load_spacecraft(preset_path))
+            self._select_builtin_preset_for_path(preset_path)
+            self._set_preset_status(f"Loaded preset: {self.spacecraft.name}")
+        else:
+            self._load_reference(build_lunar_demo())
 
     def load_demo_scenario(self, sender=None, app_data=None, user_data=None):
         """Load a documented spacecraft and mission-input example."""
@@ -1285,6 +1393,7 @@ class SpacecraftDesignerUI:
 
         preset_path = DEFAULT_PRESET.parent / scenario["preset"]
         self._load_reference(load_spacecraft(preset_path))
+        self._select_builtin_preset_for_path(preset_path)
         if dpg.does_item_exist("lunar_departure_date"):
             dpg.set_value("lunar_departure_date", scenario["departure_date"])
         if dpg.does_item_exist("lunar_transfer_days"):
@@ -1810,10 +1919,6 @@ class SpacecraftDesignerUI:
         if dpg.does_item_exist("spacecraft_mass_dry_series"):
             self._refresh_plots()
         self._set_item_color("spacecraft_model_verdict", verdict_color)
-        self._set_item_color(
-            "spacecraft_readiness_bar",
-            (100, 220, 150) if score >= 0.8 else (255, 190, 80) if score >= 0.6 else (255, 105, 90),
-        )
         self._refresh_mission_timeline(running=self.mission_running)
         self.events.publish("analysis.updated", analysis, mission)
 
