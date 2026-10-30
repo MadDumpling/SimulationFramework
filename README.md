@@ -37,7 +37,7 @@ consumption, landing contact, and landing-leg loads are not simulated. RCS
 thrust is reported separately and does not count as main-engine thrust or
 delta-v.
 
-## Why most designs fail the lunar mission
+## Mission Design Constraints
 
 The mission check is a single-stage screening, and it is strict. The vehicle needs
 thrust-to-weight above 1 to leave the pad, and about 12.6 km/s of ideal delta-v
