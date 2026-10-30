@@ -9,6 +9,8 @@ from .components import Component
 class Spacecraft:
     name: str = "Untitled spacecraft"
     components: list[Component] = field(default_factory=list)
+    # Editor-only normalized canvas positions, keyed by component ID.
+    layout: dict[str, tuple[float, float]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -25,6 +27,7 @@ class Spacecraft:
         for index, component in enumerate(self.components):
             if component.id == component_id:
                 del self.components[index]
+                self.layout.pop(component_id, None)
                 return True
         return False
 

@@ -37,6 +37,11 @@ circular parking orbit, impulsive injection, a 9.4 km/s Earth-ascent allowance,
 and ideal rocket-equation delta-v. Catalog values are illustrative; enter
 verified masses and engine performance for meaningful results.
 
+The product's actual success goal is a safe lunar touchdown. See
+[docs/LUNAR_LANDING_ROADMAP.md](docs/LUNAR_LANDING_ROADMAP.md) for the success
+definition, current-model limits, required real-world data, and implementation
+roadmap.
+
 ## Project structure
 
 ```text
@@ -78,3 +83,6 @@ Requires Python 3.11 and a GPU/driver with OpenGL 3.3.
 ```
 
 On macOS/Linux use `setup.sh`, `run.sh`, and `test.sh`.
+
+See [docs/LUNAR_LANDING_ROADMAP.md](docs/LUNAR_LANDING_ROADMAP.md) for the
+project's definition of a successful lunar landing and the fidelity roadmap.

@@ -1,5 +1,4 @@
 """OpenGL scene for the spacecraft configurator: vehicle, grid, selection, camera."""
-
 import numpy as np
 
 from spacecraft.geometry import layout_spacecraft, primitive
@@ -108,4 +107,7 @@ class SpacecraftViewport:
     def pick(self, renderer, x: float, y: float) -> str | None:
         """Return the component id under normalized coords, or None."""
         return self._pick_ids.get(renderer.pick(x, y))
+
+
+__all__ = ["SpacecraftViewport", "grid_lines"]
 

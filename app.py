@@ -1,31 +1,20 @@
-from ui import (
-    Application,
-    DesignerApplication,
-)
+from ui import Application, DesignerApplication
 
 
 def main():
-
     app = Application()
-
     app.initialize()
 
     designer_app = DesignerApplication()
-
     designer_app.initialize()
 
-    while (
-        designer_app.running
-        and app.running()
-    ):
-
-        designer_app.update()
-
-        designer_app.render()
-
-        app.render()
-
-    app.shutdown()
+    try:
+        while designer_app.running and app.running():
+            designer_app.update()
+            designer_app.render()
+            app.render()
+    finally:
+        app.shutdown()
 
 
 if __name__ == "__main__":

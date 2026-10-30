@@ -1,8 +1,8 @@
-"""DearPyGui configurator panel; the 3D vehicle is drawn by the OpenGL viewport."""
+"""DearPyGui spacecraft configurator panel for the 3D OpenGL viewport."""
 
 from datetime import datetime, timezone
-from uuid import uuid4
 from pathlib import Path
+from uuid import uuid4
 
 import dearpygui.dearpygui as dpg
 from astropy import units as u
@@ -13,6 +13,7 @@ from spacecraft.analysis import (
     assess_mission,
 )
 from spacecraft.components import (
+    Component,
     Engine,
     FuelTank,
     PowerSystem,
@@ -20,9 +21,9 @@ from spacecraft.components import (
     component_from_dict,
     component_to_dict,
 )
+from spacecraft.mission import MissionSimulationResult, run_lunar_flyby_simulation
 from spacecraft.presets import load_spacecraft, save_spacecraft
 from spacecraft.vehicle import Spacecraft
-from spacecraft.mission import MissionSimulationResult, run_lunar_flyby_simulation
 
 DEFAULT_PRESET = (
     Path(__file__).resolve().parents[1]
@@ -33,7 +34,10 @@ DEFAULT_PRESET = (
 
 
 class SpacecraftDesignerUI:
-    """Editable component assembly, analysis, and persistence."""
+    """Editable vehicle assembly, analysis, persistence, and mission launch UI."""
+
+    SELECTED_COLOR = (255, 160, 40)
+    NORMAL_COLOR = (255, 255, 255)
 
     def __init__(self, events, preset_path=DEFAULT_PRESET):
         self.events = events
@@ -49,9 +53,8 @@ class SpacecraftDesignerUI:
         if self.preset_path.exists():
             return load_spacecraft(self.preset_path)
         craft = Spacecraft("Untitled spacecraft")
-        craft.add_component(component_from_catalog("engine"))
-        craft.add_component(component_from_catalog("fuel_tank"))
-        craft.add_component(component_from_catalog("payload"))
+        for catalog_id in ("engine", "fuel_tank", "payload"):
+            craft.add_component(component_from_catalog(catalog_id))
         return craft
 
     def build(self):
@@ -62,7 +65,7 @@ class SpacecraftDesignerUI:
             height=900,
         ):
             dpg.add_text(
-                "Ideal vehicle delta-v estimate · lunar check uses JPL DE440s",
+                "Ideal delta-v analysis · live 3D viewport",
                 color=(175, 190, 210),
             )
             dpg.add_input_text(
@@ -73,26 +76,17 @@ class SpacecraftDesignerUI:
                 tag="spacecraft_name_input",
             )
             with dpg.group(horizontal=True):
-                dpg.add_button(
-                    label="Add Engine",
-                    callback=self.add_component,
-                    user_data="engine",
-                )
-                dpg.add_button(
-                    label="Add Tank",
-                    callback=self.add_component,
-                    user_data="fuel_tank",
-                )
-                dpg.add_button(
-                    label="Add Payload",
-                    callback=self.add_component,
-                    user_data="payload",
-                )
-                dpg.add_button(
-                    label="Add Power",
-                    callback=self.add_component,
-                    user_data="power_system",
-                )
+                for label, catalog_id in (
+                    ("Add Engine", "engine"),
+                    ("Add Tank", "fuel_tank"),
+                    ("Add Payload", "payload"),
+                    ("Add Power", "power_system"),
+                ):
+                    dpg.add_button(
+                        label=label,
+                        callback=self.add_component,
+                        user_data=catalog_id,
+                    )
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Save Design", callback=self.save)
                 dpg.add_button(label="Load Design", callback=self.load)
@@ -113,8 +107,13 @@ class SpacecraftDesignerUI:
                     callback=self.set_grid,
                 )
                 dpg.add_button(label="Reset Camera", callback=self.reset_camera)
+            dpg.add_text(
+                "Click a part in the 3D viewport to select it; F frames and R resets.",
+                color=(175, 190, 210),
+                wrap=560,
+            )
             dpg.add_separator()
-            dpg.add_text("Assembly Components")
+            dpg.add_text("Assembly Components (select in viewport)")
             dpg.add_group(tag="spacecraft_components_container")
             dpg.add_separator()
             dpg.add_combo(
@@ -132,11 +131,14 @@ class SpacecraftDesignerUI:
             dpg.add_text("Delta-v: 0 m/s", tag="spacecraft_delta_v")
             dpg.add_text("TWR: 0.00", tag="spacecraft_twr")
             dpg.add_text("Burn Time: 0 s", tag="spacecraft_burn_time")
-            dpg.add_text("Power: 0.00 kW generation / 0.00 kW load", tag="spacecraft_power")
+            dpg.add_text(
+                "Power: 0.00 kW generation / 0.00 kW load",
+                tag="spacecraft_power",
+            )
             dpg.add_text("Mission status", tag="spacecraft_mission_status")
             dpg.add_text("", tag="spacecraft_warnings", wrap=560)
             dpg.add_separator()
-            dpg.add_text("Moon Reachability · JPL DE440s ephemeris", bullet=True)
+            dpg.add_text("Lunar mission screening · JPL DE440s", bullet=True)
             dpg.add_input_text(
                 label="Departure date (UTC)",
                 default_value=datetime.now(timezone.utc).date().isoformat(),
@@ -160,9 +162,8 @@ class SpacecraftDesignerUI:
                 callback=self.run_lunar_mission,
             )
             dpg.add_text(
-                "Shoots a Lambert transfer, then propagates Sun/Earth/Moon gravity "
-                "against JPL DE440s. Success means entering the lunar sphere of influence; "
-                "this does not simulate capture or landing.",
+                "Success currently means reaching the lunar sphere of influence; "
+                "this is not capture or landing.",
                 wrap=560,
                 color=(175, 190, 210),
             )
@@ -183,11 +184,8 @@ class SpacecraftDesignerUI:
         self.select_component(component.id)
         self.refresh()
 
-    SELECTED_COLOR = (255, 160, 40)
-    NORMAL_COLOR = (255, 255, 255)
-
     def select_component(self, component_id):
-        """Select a component (or None) and mirror it in list and viewport."""
+        """Select a component and synchronize its viewport highlight."""
         if component_id is not None and self.spacecraft.get_component(component_id) is None:
             component_id = None
         if component_id == self.selected_id:
@@ -220,13 +218,13 @@ class SpacecraftDesignerUI:
             return
         data = component_to_dict(original)
         data["id"] = str(uuid4())
-        copy = component_from_dict(data)
-        self.spacecraft.add_component(copy)
-        self.events.publish("component.added", copy)
+        duplicate = component_from_dict(data)
+        self.spacecraft.add_component(duplicate)
+        self.events.publish("component.added", duplicate)
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._invalidate_mission_result()
         self._rebuild_component_controls()
-        self.select_component(copy.id)
+        self.select_component(duplicate.id)
         self.refresh()
 
     def set_explode(self, sender, app_data, user_data):
@@ -239,13 +237,15 @@ class SpacecraftDesignerUI:
         self.events.publish("view.reset_camera")
 
     def remove_component(self, sender, app_data, user_data):
-        removed = self.spacecraft.remove_component(user_data)
-        if removed:
-            self.events.publish("component.removed", user_data)
-            self.events.publish("spacecraft.updated", self.spacecraft)
-            self._invalidate_mission_result()
-            self._rebuild_component_controls()
-            self.refresh()
+        if not self.spacecraft.remove_component(user_data):
+            return
+        if self.selected_id == user_data:
+            self.select_component(None)
+        self.events.publish("component.removed", user_data)
+        self.events.publish("spacecraft.updated", self.spacecraft)
+        self._invalidate_mission_result()
+        self._rebuild_component_controls()
+        self.refresh()
 
     def _rebuild_component_controls(self):
         if self.spacecraft.get_component(self.selected_id) is None:
@@ -254,14 +254,21 @@ class SpacecraftDesignerUI:
             return
         dpg.delete_item("spacecraft_components_container", children_only=True)
         for component in self.spacecraft.components:
-            with dpg.group(
-                horizontal=True,
-                parent="spacecraft_components_container",
-            ):
+            with dpg.group(horizontal=True, parent="spacecraft_components_container"):
                 dpg.add_text(
-                    f"{component.name} · {component.dry_mass:,.0f} kg dry",
+                    component.name,
                     wrap=250,
                     tag=f"spacecraft_component_label_{component.id}",
+                )
+                dpg.add_text(
+                    f"{component.dry_mass:,.0f} kg dry",
+                    tag=f"spacecraft_component_mass_{component.id}",
+                )
+                dpg.add_button(
+                    label="Duplicate",
+                    callback=self.duplicate_component,
+                    user_data=component.id,
+                    small=True,
                 )
                 dpg.add_button(
                     label="Remove",
@@ -270,7 +277,7 @@ class SpacecraftDesignerUI:
                     small=True,
                 )
             for field_name, label, minimum, maximum in self._editable_fields(component):
-                input_options = {
+                options = {
                     "label": label,
                     "default_value": getattr(component, field_name),
                     "min_value": minimum,
@@ -283,14 +290,14 @@ class SpacecraftDesignerUI:
                     "tag": f"spacecraft_{component.id}_{field_name}",
                 }
                 if maximum is not None:
-                    input_options["max_value"] = maximum
-                    input_options["max_clamped"] = True
-                dpg.add_input_float(**input_options)
+                    options["max_value"] = maximum
+                    options["max_clamped"] = True
+                dpg.add_input_float(**options)
             dpg.add_separator(parent="spacecraft_components_container")
         self._apply_selection_style()
 
     @staticmethod
-    def _editable_fields(component):
+    def _editable_fields(component: Component):
         fields = [("dry_mass", "Dry mass (kg)", 0.0, None)]
         if isinstance(component, Engine):
             fields.extend(
@@ -330,12 +337,9 @@ class SpacecraftDesignerUI:
             dpg.set_value(sender, old_value)
             return
         if field_name == "dry_mass":
-            label_tag = f"spacecraft_component_label_{component.id}"
-            if dpg.does_item_exist(label_tag):
-                dpg.set_value(
-                    label_tag,
-                    f"{component.name} · {component.dry_mass:,.0f} kg dry",
-                )
+            mass_tag = f"spacecraft_component_mass_{component.id}"
+            if dpg.does_item_exist(mass_tag):
+                dpg.set_value(mass_tag, f"{component.dry_mass:,.0f} kg dry")
         if field_name == "capacity":
             fuel_tag = f"spacecraft_{component.id}_fuel_mass"
             if dpg.does_item_exist(fuel_tag):
@@ -375,14 +379,17 @@ class SpacecraftDesignerUI:
         self.events.publish("spacecraft.saved", self.spacecraft, self.preset_path)
 
     def load(self, sender=None, app_data=None, user_data=None):
-        if self.preset_path.exists():
-            self.spacecraft = load_spacecraft(self.preset_path)
-            self.events.publish("spacecraft.updated", self.spacecraft)
-            self._rebuild_component_controls()
-            self.refresh()
+        if not self.preset_path.exists():
+            return
+        self.spacecraft = load_spacecraft(self.preset_path)
+        self.select_component(None)
+        self.events.publish("spacecraft.updated", self.spacecraft)
+        self._rebuild_component_controls()
+        self.refresh()
 
     def clear(self, sender=None, app_data=None, user_data=None):
         self.spacecraft = Spacecraft(self.spacecraft.name)
+        self.select_component(None)
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._invalidate_mission_result()
         self._rebuild_component_controls()
@@ -394,7 +401,6 @@ class SpacecraftDesignerUI:
         if not str(departure_date).strip():
             self._set_lunar_status("Enter a departure date in UTC (YYYY-MM-DD).", "")
             return
-
         self._set_lunar_status(
             "Mission simulation running…",
             "Downloading/reading JPL ephemeris and integrating the trajectory.",
@@ -412,7 +418,6 @@ class SpacecraftDesignerUI:
                 f"{error}\nCheck the date, network, and JPL DE440s access.",
             )
             return
-
         self.mission_result = result
         self.events.publish("mission.completed", result)
         self._display_mission_result(result)
@@ -426,19 +431,19 @@ class SpacecraftDesignerUI:
                 title += " (surface impact predicted)"
         else:
             title = "MISSION FAILED — propagated path missed the Moon"
+        closest = (
+            f"{result.closest_approach.to_value('km'):,.0f} km"
+            if result.closest_approach is not None
+            else "not propagated"
+        )
         details = (
             f"TLI required: {result.tli_delta_v.to_value('km/s'):.2f} km/s  |  "
             f"Delta-v remaining after Earth-ascent allowance: "
             f"{max(0.0, result.available_delta_v.to_value('km/s') - 9.4):.2f} km/s\n"
             f"Transfer: {result.transfer_time.to_value('day'):.2f} days  |  "
             f"Arrival: {result.arrival_time}\n"
-            f"Closest approach: "
-            + (
-                f"{result.closest_approach.to_value('km'):,.0f} km  |  "
-                if result.closest_approach is not None
-                else "not propagated  |  "
-            )
-            + f"Lunar SOI: {result.lunar_sphere_of_influence.to_value('km'):,.0f} km\n"
+            f"Closest approach: {closest}  |  "
+            f"Lunar SOI: {result.lunar_sphere_of_influence.to_value('km'):,.0f} km\n"
             f"Ephemeris: {result.data_source}\n"
             + (
                 "Surface intersection predicted; this is not a landing simulation.\n"
@@ -468,16 +473,16 @@ class SpacecraftDesignerUI:
         self.analysis = analyze_spacecraft(self.spacecraft)
         if not self.built:
             return
-
         analysis = self.analysis
-        profile = MISSION_PROFILES[self.mission_id]
-        mission = assess_mission(analysis, profile)
+        mission = assess_mission(analysis, MISSION_PROFILES[self.mission_id])
         values = {
             "spacecraft_dry_mass": f"Dry Mass: {analysis.dry_mass:,.1f} kg",
             "spacecraft_fuel_mass": f"Fuel Mass: {analysis.fuel_mass:,.1f} kg",
             "spacecraft_wet_mass": f"Wet Mass: {analysis.wet_mass:,.1f} kg",
             "spacecraft_thrust": f"Thrust: {analysis.thrust / 1000:,.1f} kN",
-            "spacecraft_delta_v": f"Delta-v: {analysis.delta_v:,.0f} m/s · Isp {analysis.isp:.1f} s",
+            "spacecraft_delta_v": (
+                f"Delta-v: {analysis.delta_v:,.0f} m/s · Isp {analysis.isp:.1f} s"
+            ),
             "spacecraft_twr": f"TWR: {analysis.twr:.2f}",
             "spacecraft_burn_time": f"Burn Time: {analysis.burn_time:,.1f} s",
             "spacecraft_power": (
@@ -502,7 +507,4 @@ class SpacecraftDesignerUI:
                 f"{mission.mission.name}: IDEAL BUDGET MET "
                 f"({mission.delta_v_margin:,.0f} m/s margin)"
             )
-        return (
-            f"{mission.mission.name}: NOT MET · "
-            + " ".join(mission.reasons)
-        )
+        return f"{mission.mission.name}: NOT MET · " + " ".join(mission.reasons)

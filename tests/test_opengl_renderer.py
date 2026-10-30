@@ -1,9 +1,12 @@
+import numpy as np
+import pytest
+
+from spacecraft.geometry import primitive, scale
 from rendering import (
     OpenGLRenderer,
 )
-import numpy as np
-
 from rendering import opengl_renderer
+from viewport.orbit_camera import OrbitCamera
 
 
 def test_opengl_context_created():
@@ -116,12 +119,6 @@ def test_end_frame_skips_dpg_update_without_viewport_texture(monkeypatch):
     renderer.end_frame()
 
     assert uploads == []
-
-
-import pytest
-
-from spacecraft.geometry import primitive, scale
-from viewport.orbit_camera import OrbitCamera
 
 
 @pytest.fixture(scope="module")
