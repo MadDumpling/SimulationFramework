@@ -1,4 +1,8 @@
-# Spacecraft Configurator: Beginner's Demo Manual
+# Celeste SpaceWorks: Beginner's Demo Manual
+
+Celeste SpaceWorks is presented in the application as the Spacecraft
+Configurator. This manual uses both names: **Celeste SpaceWorks** for the
+project and **Spacecraft Configurator** for the app and its interface.
 
 This guide is for people seeing spacecraft design for the first time. It
 explains what the application is for, how to run a short demonstration, what
@@ -12,9 +16,11 @@ the main numbers mean, and what not to claim from the results.
 
 ## 1. What is this project?
 
-The Spacecraft Configurator is an interactive way to assemble a simplified
-spacecraft, see it in 3D, and explore how design choices affect basic
-performance estimates and a modeled trip toward the Moon.
+Celeste SpaceWorks is an interactive platform for assembling a simplified
+spacecraft, seeing it in 3D, and exploring how design choices affect basic
+performance estimates and a modeled trip toward the Moon. It brings vehicle
+design, engineering screening, visualization, and mission analysis into one
+workflow.
 
 The app brings several questions into one place:
 
@@ -148,11 +154,16 @@ flight effects described in section 7.
 7. Explain that this scenario demonstrates modeled lunar sphere-of-influence
    entry without an intersection with the Moon's mean-radius surface for these
    inputs. It does not demonstrate lunar orbit or a safe landing.
-8. Leave **Demo sounds** checked to hear a synthesized takeoff cue and a
-   success or failure sound when the mission run returns. Uncheck it to mute
-   the cues. A selected flag is displayed beside the spacecraft in the landing
-   animation; this is also illustrative and does not mean the solver modeled
-   a touchdown.
+8. Leave **Demo sounds** checked to hear a synthesized takeoff cue and then a
+   success or failure cue when the solver returns its result. Uncheck it to
+   mute the cues. If the computer has no supported audio player, the audio
+   status text explains that sounds are unavailable; the simulation still
+   works.
+9. When the result is classified as a lunar arrival, watch the illustrative
+   animation: the spacecraft descends to the Moon and your selected flag
+   appears on a separate pole beside it. This touchdown is scripted for the
+   demo. The solver only screens the lunar encounter; it does not calculate
+   capture, descent, or a physical landing.
 
 The example inputs are fixed for the showcase. If you change the date or
 transfer time, use the new on-screen report as the result; don't promise the
@@ -185,6 +196,9 @@ Use **Vehicle Livery** to personalize the 3D model before the demo:
   Survey, and Forest Research.
 - **Flag decal** adds a small flag graphic to the largest propellant tank.
   Choose a country or **None** to hide it.
+- If the landing animation plays, that same flag choice is also shown on a
+  separate pole beside the spacecraft on the Moon. The small flag patterns
+  are stylized colored tiles, so they may look pixelated when zoomed in.
 - These choices are saved with the spacecraft preset, but are strictly visual:
   they do not change mass, mission calculations, readiness, or simulation
   outcomes.
@@ -309,6 +323,12 @@ The **Mission** tab contains two different references and a trajectory screen:
 - **Transfer time (days)** is the assumed travel duration; the input is limited
   to 3–8 days.
 - **Run Lunar Mission Simulation** runs the lunar trajectory screen.
+- **Demo sounds** plays a synthesized takeoff cue when a powered liftoff starts
+  and a success or failure cue when a mission result is returned. Uncheck it
+  to mute the cues. Audio is played by a supported audio player on your
+  computer; if none is available, the status message says so and the
+  simulation remains usable. A simulation/data error is not a vehicle failure
+  verdict, so it does not play the failure cue.
 - **Status**, **details**, and **Mission timeline** show the run stage and
   outcome.
 - **Mission Status · Model Milestones** presents launch, Earth orbit, TLI,
@@ -321,6 +341,11 @@ The **Mission** tab contains two different references and a trajectory screen:
 
 Changing the spacecraft or mission inputs invalidates a previous result. Run
 the mission again after making changes.
+
+The animated flag and touchdown are presentation effects tied to the
+illustrative flight animation, not outputs of the trajectory solver. A
+successful result means the modeled path reaches the Moon's sphere of
+influence; it does not establish a safe landing.
 
 ## 5. Space words in plain English
 
