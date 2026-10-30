@@ -1,9 +1,16 @@
 """OpenGL scene for the spacecraft configurator: vehicle, grid, selection, camera."""
 import numpy as np
 
-from spacecraft.geometry import layout_spacecraft, primitive, scale, translate
+from spacecraft.geometry import (
+    FLAG_COLORS,
+    FLAG_GRIDS,
+    layout_spacecraft,
+    primitive,
+    scale,
+    translate,
+)
 
-from .flight import FlightAnimation
+from .flight import LANDED, FlightAnimation
 from .orbit_camera import OrbitCamera
 
 MOON_COLOR = (1.0, 1.0, 1.0)
@@ -161,6 +168,8 @@ class SpacecraftViewport:
                 translate(*flight.moon_center) @ scale(*(3 * [flight.moon_radius])),
                 MOON_COLOR,
             )
+        if flight.state == LANDED:
+            self._render_landed_flag(renderer)
         if flight.burning and flight.vehicle_visible:
             radius = 0.7 * flight.core_radius
             # The nose primitive points +Y; a negative Y scale makes it a plume below the base.
@@ -181,6 +190,86 @@ class SpacecraftViewport:
                 tuple(c * (0.35 + 0.65 * fade) for c in FLASH_COLOR),
                 highlight=fade,
             )
+
+    def _render_landed_flag(self, renderer) -> None:
+        appearance = self.get_spacecraft().appearance
+        flag_grid = FLAG_GRIDS.get(appearance.national_flag)
+        if flag_grid is None:
+            return
+
+        flight = self.flight
+        up = flight.landing_normal / np.linalg.norm(flight.landing_normal)
+        side = np.cross(up, np.array((0.0, 1.0, 0.0)))
+        if np.linalg.norm(side) < 1e-6:
+            side = np.cross(up, np.array((0.0, 0.0, 1.0)))
+        side /= np.linalg.norm(side)
+        ground_normal = up * flight.moon_radius + side * (1.25 * flight.height)
+        ground_normal /= np.linalg.norm(ground_normal)
+        base = flight.moon_center + ground_normal * flight.moon_radius
+
+        toward_camera = self.camera.eye.astype(np.float64) - base
+        toward_camera -= np.dot(toward_camera, ground_normal) * ground_normal
+        if np.linalg.norm(toward_camera) < 1e-6:
+            toward_camera = side
+        toward_camera /= np.linalg.norm(toward_camera)
+        right = np.cross(ground_normal, toward_camera)
+        right /= np.linalg.norm(right)
+        front = np.cross(right, ground_normal)
+        frame = np.eye(4, dtype=np.float32)
+        frame[:3, :3] = np.column_stack((right, ground_normal, front))
+
+        pole_height = 1.55 * flight.height
+        renderer.draw_mesh(
+            "cylinder",
+            primitive("cylinder"),
+            translate(*base)
+            @ frame
+            @ scale(
+                0.025 * flight.height,
+                pole_height,
+                0.025 * flight.height,
+            ),
+            (0.72, 0.76, 0.82),
+        )
+
+        flag_width = 0.95 * flight.height
+        flag_height = flag_width * 5.0 / 7.0
+        tile_width = flag_width / 7.0
+        tile_height = flag_height / 5.0
+        flag_frame = (
+            translate(*base)
+            @ frame
+            @ translate(0.52 * flight.height, 1.15 * flight.height, 0.0)
+        )
+        renderer.draw_mesh(
+            "box",
+            primitive("box"),
+            flag_frame
+            @ scale(
+                flag_width * 1.08,
+                flag_height * 1.12,
+                0.025 * flight.height,
+            ),
+            (0.08, 0.10, 0.14),
+        )
+        for row, pattern in enumerate(flag_grid):
+            for column, symbol in enumerate(pattern):
+                renderer.draw_mesh(
+                    "box",
+                    primitive("box"),
+                    flag_frame
+                    @ translate(
+                        (column - 3) * tile_width,
+                        (2 - row) * tile_height,
+                        0.015 * flight.height,
+                    )
+                    @ scale(
+                        tile_width * 1.02,
+                        tile_height * 1.02,
+                        0.009 * flight.height,
+                    ),
+                    FLAG_COLORS[symbol],
+                )
 
     def pick(self, renderer, x: float, y: float) -> str | None:
         """Return the component id under normalized coords, or None."""

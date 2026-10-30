@@ -516,6 +516,18 @@ class SpacecraftDesignerUI:
                         callback=self._invalidate_mission_result,
                         tag="lunar_transfer_days",
                     )
+                    dpg.add_checkbox(
+                        label="Demo sounds",
+                        default_value=True,
+                        callback=self.set_demo_audio,
+                        tag="spacecraft_demo_audio",
+                    )
+                    dpg.add_text(
+                        "Takeoff and result sounds are synthesized; use this checkbox to mute them.",
+                        tag="spacecraft_audio_status",
+                        wrap=460,
+                        color=(175, 190, 210),
+                    )
                     dpg.add_button(
                         label="Run Lunar Mission Simulation",
                         callback=self.run_lunar_mission,
@@ -620,6 +632,18 @@ class SpacecraftDesignerUI:
 
     def set_grid(self, sender, app_data, user_data):
         self.events.publish("view.grid", bool(app_data))
+
+    def set_demo_audio(self, sender, app_data, user_data):
+        self.events.publish("audio.enabled", bool(app_data))
+
+    @staticmethod
+    def set_audio_status(message, warning=False):
+        if dpg.does_item_exist("spacecraft_audio_status"):
+            dpg.set_value("spacecraft_audio_status", message)
+            dpg.configure_item(
+                "spacecraft_audio_status",
+                color=(255, 190, 80) if warning else (175, 190, 210),
+            )
 
     def set_paint_scheme(self, sender, app_data, user_data):
         self.spacecraft.appearance = SpacecraftAppearance(

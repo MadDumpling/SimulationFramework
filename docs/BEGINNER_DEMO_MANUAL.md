@@ -33,7 +33,7 @@ The app brings several questions into one place:
 - **How do components fit together?** The 3D view and placement editor make
   assembly layout easier to see and adjust.
 - **What data is still unknown?** Data readiness and provenance fields make
-  the difference between published, estimated, and  inputs
+  the difference between published, estimated, and inputs
   visible.
 
 ### Why is that relevant?
@@ -101,7 +101,7 @@ encounter scenario.
 
 1. Start on the **Design** tab.
 2. Point out the component list and the 3D spacecraft.
-3. Say: “This is an  spacecraft assembled from editable parts. Its
+3. Say: “This is an illustrative spacecraft assembled from editable parts. Its
    numbers are chosen to demonstrate the software's checks; they are not
    specifications for real flight hardware.”
 4. Click **Lunar Demo** if you want to restore the starting example.
@@ -161,6 +161,16 @@ flight effects described in section 7.
 7. Explain that this scenario demonstrates modeled lunar sphere-of-influence
    entry without an intersection with the Moon's mean-radius surface for these
    inputs. It does not demonstrate lunar orbit or a safe landing.
+8. Leave **Demo sounds** checked to hear a synthesized takeoff cue and then a
+   success or failure cue when the solver returns its result. Uncheck it to
+   mute the cues. If the computer has no supported audio player, the audio
+   status text explains that sounds are unavailable; the simulation still
+   works.
+9. When the result is classified as a lunar arrival, watch the illustrative
+   animation: the spacecraft descends to the Moon and your selected flag
+   appears on a separate pole beside it. This touchdown is scripted for the
+   demo. The solver only screens the lunar encounter; it does not calculate
+   capture, descent, or a physical landing.
 
 The example inputs are fixed for the showcase. If you change the date or
 transfer time, use the new on-screen report as the result; don't promise the
@@ -185,6 +195,20 @@ run it again. The contrast is more useful than presenting a failure as simply
 ### Design tab
 
 The **Design** tab is where you assemble and arrange the spacecraft.
+
+Use **Vehicle Livery** to personalize the 3D model before the demo:
+
+- **Paint scheme** changes the colors of the main hull and selected subsystem
+  hardware. Options include Orbital White, Deep Space, Lunar Gold, Arctic
+  Survey, and Forest Research.
+- **Flag decal** adds a small flag graphic to the largest propellant tank.
+  Choose a country or **None** to hide it.
+- If the landing animation plays, that same flag choice is also shown on a
+  separate pole beside the spacecraft on the Moon. The small flag patterns
+  are stylized colored tiles, so they may look pixelated when zoomed in.
+- These choices are saved with the spacecraft preset, but are strictly visual:
+  they do not change mass, mission calculations, readiness, or simulation
+  outcomes.
 
 At the top, use **Choose a preset** and **Load preset** to quickly switch
 between the Lunar Demo, Apollo Lunar Module reference vehicle, starter design,
@@ -253,7 +277,7 @@ Be careful: using **Save Design** while working on the default design can
 overwrite that file. For a presentation, the safest option is to demonstrate
 without saving, or make a separate copy of the preset before editing it
 outside the app. **Clear Assembly** removes all parts from the current
-in-memory design; **Lunar Demo** restores the  lunar example.
+in-memory design; **Lunar Demo** restores the illustrative lunar example.
 
 ### Analysis tab
 
@@ -306,6 +330,12 @@ The **Mission** tab contains two different references and a trajectory screen:
 - **Transfer time (days)** is the assumed travel duration; the input is limited
   to 3–8 days.
 - **Run Lunar Mission Simulation** runs the lunar trajectory screen.
+- **Demo sounds** plays a synthesized takeoff cue when a powered liftoff starts
+  and a success or failure cue when a mission result is returned. Uncheck it
+  to mute the cues. Audio is played by a supported audio player on your
+  computer; if none is available, the status message says so and the
+  simulation remains usable. A simulation/data error is not a vehicle failure
+  verdict, so it does not play the failure cue.
 - **Status**, **details**, and **Mission timeline** show the run stage and
   outcome.
 - **Mission Status · Model Milestones** presents launch, Earth orbit, TLI,
@@ -318,6 +348,11 @@ The **Mission** tab contains two different references and a trajectory screen:
 
 Changing the spacecraft or mission inputs invalidates a previous result. Run
 the mission again after making changes.
+
+The animated flag and touchdown are presentation effects tied to the
+illustrative flight animation, not outputs of the trajectory solver. A
+successful result means the modeled path reaches the Moon's sphere of
+influence; it does not establish a safe landing.
 
 ## 5. Space words in plain English
 
@@ -339,7 +374,7 @@ the mission again after making changes.
 | **Sphere of influence (SOI)** | A convenient approximate boundary where the Moon's gravity becomes important to the modeled spacecraft path. Entering the SOI is not the same as orbiting or landing on the Moon. |
 | **RCS** | Reaction-control system: smaller thrusters used to turn or make small adjustments. This app displays their ratings but does not use them to change the lunar path. |
 | **Avionics** | The electronics used for navigation, control, and spacecraft management. |
-| **Data provenance** | A record of where a number came from and whether it is measured, published, estimated, or . |
+| **Data provenance** | A record of where a number came from and whether it is measured, published, estimated, or illustrative. |
 
 ## 6. Demo scenario guide
 
@@ -369,7 +404,7 @@ reports trajectory and encounter quantities such as required injection
 delta-v, closest approach, and whether the path enters the estimated lunar
 SOI.
 
-Here are the current limitations when showing success:
+To keep the demo honest, explain these limitations when showing a success:
 
 - The 9.4 km/s Earth-ascent figure is a fixed allowance, not an Earth launch
   simulation. There is no launch site, atmosphere, drag, Earth rotation,
@@ -388,7 +423,7 @@ Here are the current limitations when showing success:
 - The Apollo 11 panel is a separate fixed historical reference from NASA
   CR-61291. The source provides selected event and trajectory values, not the
   complete Saturn V data needed to predict a new launch or alternative design.
-- The built-in catalog and Lunar Demo contain synthetic  values.
+- The built-in catalog and Lunar Demo contain synthetic illustrative values.
   A successful result is not flight evidence.
 
 For the detailed equations and model assumptions, see
@@ -405,7 +440,7 @@ This script takes about five minutes. It can be split among several presenters.
 > “This project makes spacecraft design tradeoffs visible. We can assemble
 > components, see how mass and propellant affect ideal performance, and test
 > why a simplified mission screen passes or fails. The values in this demo are
-> , so this is a learning tool—not a flight design.”
+> illustrative, so this is a learning tool—not a flight design.”
 
 **Presenter 2 — Design (about one minute)**
 
@@ -460,6 +495,6 @@ This script takes about five minutes. It can be split among several presenters.
 - [Lunar landing roadmap](./LUNAR_LANDING_ROADMAP.md) — what would be needed
   to progress toward a realistic touchdown simulation.
 - [Lunar Demo preset](../presets/spacecraft/lunar_demo.json) — the editable
-   spacecraft definition.
+  illustrative spacecraft definition.
 - [Apollo 11 source and data notes](../LUNAR_DATA.md) — provenance for the
   fixed historical reference and documented data gaps.

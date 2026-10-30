@@ -14,6 +14,7 @@ def main():
             designer_app.render()
             app.render()
     finally:
+        designer_app.shutdown()
         app.shutdown()
 
 

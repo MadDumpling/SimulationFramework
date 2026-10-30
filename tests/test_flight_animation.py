@@ -9,6 +9,8 @@ from core.event_bus import EventBus
 from rendering import OpenGLRenderer
 from spacecraft.geometry import rotation_between
 from spacecraft.presets import load_spacecraft
+from spacecraft.appearance import SpacecraftAppearance
+from spacecraft.vehicle import Spacecraft
 from ui.spacecraft_designer import DEFAULT_PRESET, SpacecraftDesignerUI
 import ui.spacecraft_designer as designer_module
 from viewport import SpacecraftViewport
@@ -649,13 +651,93 @@ def test_reset_flight_returns_to_pad(renderer):
 def app(monkeypatch):
     from ui import designer_application as module
 
+    class FakeAudio:
+        def __init__(self):
+            self.enabled = True
+            self.played = []
+
+        @property
+        def status_message(self):
+            return "Fake audio ready"
+
+        def play(self, cue):
+            if self.enabled:
+                self.played.append(cue)
+            return None
+
+        def stop(self):
+            pass
+
+        def set_enabled(self, enabled):
+            self.enabled = enabled
+
+        def close(self):
+            pass
+
     monkeypatch.setattr(module, "OpenGLRenderer", lambda: None)
+    monkeypatch.setattr(module, "AudioCues", FakeAudio)
     monkeypatch.setattr(module, "create_dockspace", lambda: None)
     application = module.DesignerApplication()
     application.designer.load_lunar_demo()
     banners = []
     monkeypatch.setattr(application, "_set_banner", lambda text, color: banners.append(text))
     return application, banners
+
+
+def test_app_plays_takeoff_and_failure_cues(app):
+    application, _ = app
+
+    application.events.publish("mission.started", True, True)
+    application.events.publish("mission.completed", make_result(success=False))
+
+    assert application.audio.played == ["takeoff", "failure"]
+
+
+def test_landed_scene_displays_the_selected_flag_on_a_separate_pole():
+    from spacecraft.geometry import FLAG_COLORS, FLAG_GRIDS
+
+    craft = Spacecraft(
+        "Flag display",
+        appearance=SpacecraftAppearance(national_flag="Japan"),
+    )
+    viewport = SpacecraftViewport(lambda: craft)
+    viewport.flight.state = f.LANDED
+    viewport.flight.height = 10.0
+    viewport.flight.moon_center = np.array((0.0, 0.0, 0.0))
+    viewport.flight.moon_radius = 20.0
+    viewport.flight.landing_normal = np.array((0.0, 1.0, 0.0))
+    viewport.flight.position = np.array((0.0, 25.0, 0.0))
+
+    class RecordingRenderer:
+        def __init__(self):
+            self.draws = []
+
+        def draw_mesh(self, key, mesh, model, color, **kwargs):
+            self.draws.append((key, model, color))
+
+    renderer = RecordingRenderer()
+    viewport._render_flight(renderer, viewport.flight.vehicle_matrix())
+    flag_colors = {
+        color for key, _, color in renderer.draws if key == "box"
+    }
+
+    assert set(FLAG_COLORS.values()) & flag_colors == {
+        FLAG_COLORS[symbol]
+        for row in FLAG_GRIDS["Japan"]
+        for symbol in row
+    }
+    pole = next(draw for draw in renderer.draws if draw[0] == "cylinder")
+    assert np.linalg.norm(pole[1][:3, 3] - viewport.flight.position) > 0.0
+
+
+def test_app_mutes_and_stops_audio_when_disabled(app):
+    application, _ = app
+
+    application.events.publish("audio.enabled", False)
+    application.events.publish("mission.started", True, True)
+
+    assert not application.audio.enabled
+    assert application.audio.played == []
 
 
 def test_app_lands_on_success_and_says_it_is_an_illustration(app):
@@ -667,6 +749,7 @@ def test_app_lands_on_success_and_says_it_is_an_illustration(app):
 
     assert application.viewport.flight.state == f.LANDED
     assert banners[-1].startswith("REACHED THE MOON") and "illustration" in banners[-1]
+    assert application.audio.played[-1] == "success"
 
 
 def test_app_shows_a_fail_state_for_each_failure(app):
@@ -688,6 +771,7 @@ def test_app_shows_a_fail_state_for_each_failure(app):
     application.events.publish("mission.completed", make_result(simulated=False))
     assert application.viewport.flight.state == f.NO_LIFTOFF
     assert "cannot lift off" in banners[-1]
+    assert application.audio.played[-1] == "failure"
 
 
 def test_app_returns_to_pad_after_an_error_or_design_edit(app):
