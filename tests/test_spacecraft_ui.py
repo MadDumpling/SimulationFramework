@@ -20,6 +20,13 @@ def test_default_preset_is_the_lunar_capable_demo():
 
     assert craft.name == "Lunar-capable demo (illustrative)"
     assert {Engine, FuelTank, Payload} <= {type(part) for part in craft.components}
+    assert {
+        "LandingLeg",
+        "RcsThruster",
+        "SolarPanel",
+        "Battery",
+        "Avionics",
+    } <= {type(part).__name__ for part in craft.components}
 
 
 def test_loading_showcase_scenario_sets_preset_and_mission_inputs(monkeypatch):
@@ -372,6 +379,63 @@ def test_residual_propellant_edit_changes_usable_propellant(tmp_path):
 
     assert tank.residual_propellant == 500.0
     assert ui.analysis.fuel_mass == before - 500.0
+
+
+def test_new_subsystem_properties_can_be_edited_and_placement_reset(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    ui.clear()
+
+    ui.add_component(None, None, "landing_leg")
+    gear = ui.spacecraft.components[-1]
+    ui.update_component("leg_count", 6, (gear.id, "leg_count"))
+    ui.update_component("rated_load", 12_000.0, (gear.id, "rated_load_n"))
+    ui.set_component_placement_value(
+        "offset", 4.0, (gear.id, "offset_x")
+    )
+    assert gear.leg_count == 6
+    assert gear.rated_load_n == 12_000.0
+    assert gear.placement.offset[0] == 4.0
+
+    ui.reset_component_placement(None, None, gear.id)
+
+    assert gear.placement is None
+
+
+def test_analysis_panel_reports_auxiliary_thrust_and_power_surplus():
+    ui = SpacecraftDesignerUI(EventBus())
+    ui.clear()
+    ui.add_component(None, None, "rcs_thruster")
+    ui.add_component(None, None, "solar_panel")
+    ui.add_component(None, None, "avionics")
+    ui.built = True
+    designer_module.dpg.set_value.reset_mock()
+
+    ui.refresh()
+
+    values = {
+        call.args[0]: call.args[1]
+        for call in designer_module.dpg.set_value.call_args_list
+    }
+    assert values["spacecraft_rcs_thrust"].startswith("RCS thrust: 1,800.0 N")
+    assert "+2.05 kW surplus" in values["spacecraft_power"]
+
+
+def test_mirror_copy_reflects_placement_and_selects_the_copy(tmp_path):
+    ui = SpacecraftDesignerUI(EventBus(), preset_path=tmp_path / "design.json")
+    engine = next(part for part in ui.spacecraft.components if isinstance(part, Engine))
+    engine.placement = Placement(
+        offset=(2.0, 3.0, 4.0),
+        rotation_deg=(10.0, 20.0, 30.0),
+    )
+
+    ui.mirror_component(None, None, (engine.id, "x"))
+
+    copy = ui.spacecraft.components[-1]
+    assert copy.id != engine.id
+    assert copy.placement.offset == (-2.0, 3.0, 4.0)
+    assert copy.placement.rotation_deg == engine.placement.rotation_deg
+    assert copy.placement.symmetry_group == engine.id
+    assert ui.selected_id == copy.id
 
 
 def test_load_apollo_lm_replaces_design_without_changing_save_path(tmp_path):

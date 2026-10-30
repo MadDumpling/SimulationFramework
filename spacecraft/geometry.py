@@ -14,7 +14,18 @@ from functools import cache
 
 import numpy as np
 
-from .components import Component, Engine, FuelTank, Payload, PowerSystem
+from .components import (
+    Avionics,
+    Battery,
+    Component,
+    Engine,
+    FuelTank,
+    LandingLeg,
+    Payload,
+    PowerSystem,
+    RcsThruster,
+    SolarPanel,
+)
 from .mass_properties import mass_properties
 from .transforms import (  # noqa: F401  (re-exported for existing callers)
     euler_xyz_degrees,
@@ -36,6 +47,11 @@ COMPONENT_COLORS = {
     FuelTank: (0.78, 0.80, 0.84),
     Payload: (0.45, 0.62, 0.42),
     PowerSystem: (0.22, 0.30, 0.62),
+    LandingLeg: (0.70, 0.72, 0.76),
+    RcsThruster: (0.80, 0.48, 0.25),
+    SolarPanel: (0.10, 0.42, 0.82),
+    Battery: (0.36, 0.68, 0.45),
+    Avionics: (0.66, 0.57, 0.36),
 }
 STRUCTURE_COLOR = (0.42, 0.45, 0.50)
 SEAM_COLOR = (0.25, 0.27, 0.31)
@@ -77,13 +93,23 @@ class VehicleLayout:
     height: float = 0.0
     extent: float = 0.0  # max horizontal distance from the vehicle axis
     core_radius: float = 1.0
+    frame_center: tuple[float, float, float] | None = None
+    frame_radius: float | None = None
 
     @property
     def center(self) -> np.ndarray:
         return np.array([0.0, self.height / 2.0, 0.0], dtype=np.float32)
 
     @property
+    def camera_center(self) -> np.ndarray:
+        if self.frame_center is None:
+            return self.center
+        return np.asarray(self.frame_center, dtype=np.float32)
+
+    @property
     def bounding_radius(self) -> float:
+        if self.frame_radius is not None:
+            return self.frame_radius
         return max(1.0, math.hypot(self.height / 2.0, self.extent))
 
     def component_ids(self) -> list[str]:
@@ -202,6 +228,13 @@ def primitive(name: str) -> Mesh:
 
 
 PRIMITIVES = ("cylinder", "nose", "bell", "box", "sphere")
+PRIMITIVE_BOUNDS = {
+    "box": ((-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)),
+    "cylinder": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
+    "bell": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
+    "nose": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
+    "sphere": ((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0)),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -263,10 +296,28 @@ def layout_spacecraft(
     engines = [c for c in components if isinstance(c, Engine)]
     tanks = [c for c in components if isinstance(c, FuelTank)]
     power = [c for c in components if isinstance(c, PowerSystem)]
+    landing_legs = [c for c in components if isinstance(c, LandingLeg)]
+    rcs_clusters = [c for c in components if isinstance(c, RcsThruster)]
+    solar_panels = [c for c in components if isinstance(c, SolarPanel)]
+    batteries = [c for c in components if isinstance(c, Battery)]
+    avionics = [c for c in components if isinstance(c, Avionics)]
     payloads = [c for c in components if isinstance(c, Payload)]
     others = [
         c for c in components
-        if not isinstance(c, (Engine, FuelTank, PowerSystem, Payload))
+        if not isinstance(
+            c,
+            (
+                Engine,
+                FuelTank,
+                PowerSystem,
+                LandingLeg,
+                RcsThruster,
+                SolarPanel,
+                Battery,
+                Avionics,
+                Payload,
+            ),
+        )
     ]
 
     radius = core_radius(spacecraft)
@@ -327,6 +378,81 @@ def layout_spacecraft(
                 GAUGE_COLOR)
         y += length + gap
 
+    # Landing gear is rendered as one editable assembly with radial legs.
+    for gear in landing_legs:
+        body_y = max(y * 0.55, radius * 1.8)
+        upper_radius = radius * 0.8
+        lower_y = 0.08
+        strut_radius = max(0.035, min(radius * 0.035, gear.footpad_radius_m * 0.2))
+        for index in range(gear.leg_count):
+            angle = 2.0 * math.pi * index / gear.leg_count
+            radial_x, radial_z = math.cos(angle), math.sin(angle)
+            upper = np.array((radial_x * upper_radius, body_y, radial_z * upper_radius))
+            lower = np.array(
+                (
+                    radial_x * gear.footprint_radius_m,
+                    lower_y,
+                    radial_z * gear.footprint_radius_m,
+                )
+            )
+            direction = upper - lower
+            length = float(np.linalg.norm(direction))
+            add(
+                gear,
+                "cylinder",
+                translate(*lower)
+                @ rotation_between((0.0, 1.0, 0.0), direction)
+                @ scale(strut_radius, length, strut_radius),
+            )
+            add(
+                gear,
+                "box",
+                rotate_y(angle)
+                @ translate(
+                    gear.footprint_radius_m,
+                    lower_y,
+                    0.0,
+                )
+                @ scale(
+                    gear.footpad_radius_m * 2.0,
+                    max(0.06, strut_radius * 2.0),
+                    gear.footpad_radius_m * 1.2,
+                ),
+            )
+            extent = max(extent, gear.footprint_radius_m + gear.footpad_radius_m)
+
+    # Auxiliary thrusters are shown around the body but do not add main-engine thrust.
+    for cluster in rcs_clusters:
+        centre_y = max(y * 0.65, radius)
+        pod_radius = max(0.08, min(radius * 0.12, 0.35))
+        nozzle_radius = pod_radius * 0.35
+        for index in range(cluster.thruster_count):
+            angle = 2.0 * math.pi * index / cluster.thruster_count
+            radial_x, radial_z = math.cos(angle), math.sin(angle)
+            spin = rotate_y(angle)
+            add(
+                cluster,
+                "box",
+                translate(
+                    radial_x * (radius + pod_radius * 0.35),
+                    centre_y,
+                    radial_z * (radius + pod_radius * 0.35),
+                )
+                @ scale(pod_radius * 0.45, pod_radius * 1.4, pod_radius * 0.45),
+            )
+            add(
+                cluster,
+                "bell",
+                translate(
+                    radial_x * (radius + pod_radius),
+                    centre_y,
+                    radial_z * (radius + pod_radius),
+                )
+                @ rotation_between((0.0, 1.0, 0.0), (radial_x, 0.0, radial_z))
+                @ scale(nozzle_radius, nozzle_radius * 1.5, nozzle_radius),
+            )
+            extent = max(extent, radius + pod_radius * 2.0)
+
     # Power systems mount on an avionics bus with deployable wings.
     if power:
         bus_radius = radius * 0.9
@@ -356,6 +482,47 @@ def layout_spacecraft(
                     spin @ translate(bus_radius + size / 2.0, mid, 0.0) @ scale(size, size, size))
         y += bus_height + gap
 
+    # A solar array is sized from its declared deployed area.
+    for panel in solar_panels:
+        width = max(radius * 0.38, 0.45)
+        length = max(panel.area_m2 / (2.0 * width), 0.35)
+        boom = radius * 0.35
+        mid = max(y * 0.5, radius * 1.5)
+        for side in (-1.0, 1.0):
+            add(
+                panel,
+                "box",
+                translate(side * (radius + boom / 2.0), mid, 0.0)
+                @ scale(boom, 0.055, 0.055),
+                STRUCTURE_COLOR,
+            )
+            add(
+                panel,
+                "box",
+                translate(side * (radius + boom + length / 2.0), mid, 0.0)
+                @ scale(length, width, 0.035),
+            )
+        extent = max(extent, radius + boom + length)
+
+    # Electrical storage and avionics boxes mount on opposite sides of the bus.
+    for index, system in enumerate(batteries + avionics):
+        size = float(
+            np.clip(
+                math.sqrt(max(system.dry_mass, 1.0) / 80.0) * radius * 0.32,
+                0.2,
+                radius * 0.75,
+            )
+        )
+        centre_y = max(y * 0.58, radius * 1.4)
+        side = 1.0 if index % 2 == 0 else -1.0
+        add(
+            system,
+            "box",
+            translate(side * (radius + size * 0.25), centre_y, index * size * 0.12)
+            @ scale(size, size * 0.7, size * 0.8),
+        )
+        extent = max(extent, radius + size * 0.75)
+
     # Payloads and any unrecognised component types stack under the nose.
     for payload in payloads + others:
         payload_radius = radius * 0.85
@@ -365,7 +532,7 @@ def layout_spacecraft(
         add(payload, "cylinder", _cylinder(payload_radius, y + radius * 0.12, height))
         y += radius * 0.12 + height + gap
 
-    if tanks or power or payloads or others:
+    if tanks or power or solar_panels or batteries or avionics or payloads or others:
         nose = radius * 1.6
         add(None, "nose", _cylinder(radius, y, nose))
         y += nose
@@ -417,17 +584,34 @@ def layout_spacecraft(
                     (0.18, 0.85, 0.38),
                 )
             )
+    layout.frame_center, layout.frame_radius = _visual_bounds(layout.parts)
     return layout
 
 
+def _visual_bounds(parts: list[PartVisual]) -> tuple[tuple[float, float, float], float]:
+    points = []
+    for part in parts:
+        low, high = PRIMITIVE_BOUNDS[part.primitive]
+        corners = np.array(
+            [
+                (x, y, z, 1.0)
+                for x in (low[0], high[0])
+                for y in (low[1], high[1])
+                for z in (low[2], high[2])
+            ],
+            dtype=np.float32,
+        )
+        points.append((part.model @ corners.T).T[:, :3])
+    if not points:
+        return (0.0, 0.0, 0.0), 1.0
+    all_points = np.concatenate(points)
+    low, high = all_points.min(axis=0), all_points.max(axis=0)
+    centre = (low + high) / 2.0
+    radius = float(np.max(np.linalg.norm(all_points - centre, axis=1)))
+    return tuple(float(value) for value in centre), max(1.0, radius)
+
+
 def _component_default_centres(parts: list[PartVisual]) -> dict[str, np.ndarray]:
-    local_bounds = {
-        "box": ((-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)),
-        "cylinder": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
-        "bell": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
-        "nose": ((-1.0, 0.0, -1.0), (1.0, 1.0, 1.0)),
-        "sphere": ((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0)),
-    }
     component_parts = {}
     for part in parts:
         if part.component_id is not None:
@@ -438,7 +622,7 @@ def _component_default_centres(parts: list[PartVisual]) -> dict[str, np.ndarray]
         primary = [part for part in visuals if part.primitive != "box"] or visuals
         transformed = []
         for part in primary:
-            low, high = local_bounds[part.primitive]
+            low, high = PRIMITIVE_BOUNDS[part.primitive]
             corners = np.array(
                 [
                     (x, y, z, 1.0)
@@ -605,6 +789,12 @@ def _fallback_component_length(component: Component) -> float:
         return float(np.clip(volume / (math.pi * radius**2), 0.3 * radius, 40.0))
     if isinstance(component, Engine):
         return engine_exit_radius(component) * 2.6
+    if isinstance(component, LandingLeg):
+        return component.leg_length_m
+    if isinstance(component, SolarPanel):
+        return math.sqrt(component.area_m2)
+    if isinstance(component, (RcsThruster, Battery, Avionics)):
+        return float(np.clip(component.dry_mass**0.5 * 0.1, 0.2, 4.0))
     radius = core_radius_for(component)
     volume = component.dry_mass / PAYLOAD_DENSITY
     return float(np.clip(volume / (math.pi * radius**2), 0.4 * radius, 6.0 * radius))

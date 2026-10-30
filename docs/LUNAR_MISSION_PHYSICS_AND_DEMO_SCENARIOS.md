@@ -46,6 +46,34 @@ whose fuel type matches the engine is burnable. Residual propellant is not
 usable. An incompatible tank still adds mass, but it does not add burnable
 fuel. That is why a full tank can make a design heavier without helping it fly.
 
+### Installed spacecraft subsystems
+
+The designer also includes landing-leg assemblies, RCS thrusters, solar
+panels, batteries, and avionics. Their declared dry masses count toward vehicle
+mass. Their other values are hardware ratings for configuration and display,
+not additional trajectory physics:
+
+- **Landing legs:** leg count, length, footprint, footpad size, and optional
+  rated load. The rendered assembly is illustrative; leg strength and contact
+  dynamics are not calculated. Safe tip-over screening continues to use the
+  separate spacecraft-level landing-gear and center-of-mass inputs.
+- **RCS thrusters:** per-thruster thrust and specific impulse, cluster count,
+  propellant label, optional minimum impulse bit, and electrical load. RCS
+  thrust is not added to main-engine thrust or delta-v, and propellant
+  consumption is not modeled or deducted from a tank.
+- **Solar panels:** deployed area and rated generation. **Batteries:** energy
+  capacity and maximum charge/discharge power. **Avionics:** declared
+  electrical load and redundancy count. The power summary adds these nameplate
+  generation, storage, and load ratings; it does not simulate illumination,
+  pointing, battery state of charge, power over time, or a redundant avionics
+  load multiplier. Enter each component's total load.
+
+The placement editor supports automatic layout, free XYZ offsets, parent-part
+attachments with selectable nodes, local Euler XYZ rotations, reset controls,
+and X/Z mirror copies. It is an assembly visualization aid: attachment
+clearances, collisions, wiring, structural loads, and deployable motion are not
+validated.
+
 ### 2. Thrust-to-weight ratio: can it lift off?
 
 ```text
@@ -246,6 +274,8 @@ of a circular 200 km parking orbit. It does not simulate:
   propagation, engine throttle/restart constraints, or guidance corrections.
 - Lunar capture, powered descent, landing-site terrain, landing-gear dynamics,
   touchdown speed, attitude, or safe touchdown.
+- Time-dependent subsystem power, RCS propellant use, solar illumination, or
+  battery charge state.
 - Uncertainty ranges, navigation error, or probability of mission success.
 
 The on-screen flight animation illustrates a verdict; it is not the computed

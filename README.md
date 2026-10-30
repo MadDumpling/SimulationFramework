@@ -1,10 +1,11 @@
 # Spacecraft Configurator
 
 An interactive spacecraft configuration designer. A DearPyGui panel edits the
-vehicle (engines, propellant tanks, payloads, power systems) and an OpenGL
-viewport shows it live in 3D. Mass, ideal delta-v, TWR, burn time, and power
-balance update as the design changes, and a lunar-reachability check propagates
-the vehicle against the JPL DE440s ephemeris.
+vehicle (engines, propellant tanks, payloads, landing legs, RCS thrusters, solar
+arrays, batteries, and avionics) and an OpenGL viewport shows it live in 3D.
+Mass, ideal delta-v, TWR, burn time, and installed power ratings update as the
+design changes, and a lunar-reachability check propagates the vehicle against
+the JPL DE440s ephemeris.
 
 ## Viewport controls
 
@@ -22,6 +23,19 @@ The designer panel adds components, edits their properties, duplicates parts
 **Exploded view** slider and grid toggle. Part sizes follow the design:
 tank length tracks propellant capacity, engine bell size tracks thrust, and
 solar-wing area tracks generation. This is a visualization aid, not CAD.
+Each part can be freely positioned or attached to another component, with
+XYZ offsets, Euler rotations, selectable attachment nodes, reset controls,
+and X/Z mirror-copy actions. **Frame the vehicle** and initial camera framing
+include manually placed parts.
+
+Landing gear, RCS, solar arrays, batteries, and avionics contribute their
+declared dry masses to vehicle metrics. Installed solar generation, battery
+capacity and charge/discharge ratings, and avionics/RCS electrical loads are
+shown in the power summary. These are nameplate values, not a time-dependent
+power simulation: illumination, pointing, state of charge, RCS propellant
+consumption, landing contact, and landing-leg loads are not simulated. RCS
+thrust is reported separately and does not count as main-engine thrust or
+delta-v.
 
 ## Why most designs fail the lunar mission
 
@@ -145,7 +159,7 @@ simulation does not consume them yet.
 ```text
 app.py                   Entry point
 spacecraft/              Domain model (no UI/GL imports)
-  components.py          Engine, FuelTank, Payload, PowerSystem + illustrative catalog
+  components.py          Propulsion, structure, power, avionics + illustrative catalog
   propulsion.py          Throttle, ignition/restart, gimbal data
   provenance.py          Data source/quality/uncertainty records
   vehicle.py             Spacecraft assembly, landing gear, attitude limits

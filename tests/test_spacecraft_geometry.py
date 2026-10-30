@@ -7,6 +7,7 @@ from spacecraft.geometry import (
     layout_spacecraft,
     primitive,
 )
+from spacecraft.placement import Placement
 from spacecraft.presets import load_spacecraft
 from spacecraft.vehicle import Spacecraft
 from ui.spacecraft_designer import DEFAULT_PRESET
@@ -91,3 +92,36 @@ def test_solar_array_widens_with_generation():
         return layout_spacecraft(craft).extent
 
     assert extent(20.0) > extent(1.2)
+
+
+def test_new_subsystems_are_drawn_and_have_valid_transform_matrices():
+    craft = Spacecraft("Subsystem visualization")
+    for catalog_id in (
+        "landing_leg",
+        "rcs_thruster",
+        "solar_panel",
+        "battery",
+        "avionics",
+    ):
+        craft.add_component(component_from_catalog(catalog_id))
+
+    layout = layout_spacecraft(craft)
+
+    assert set(layout.component_ids()) == {part.id for part in craft.components}
+    assert layout.extent > layout.core_radius
+    assert layout.frame_center is not None
+    assert layout.frame_radius is not None
+    assert all(np.isfinite(part.model).all() for part in layout.parts)
+
+
+def test_manual_placement_updates_viewport_framing_bounds():
+    craft = Spacecraft("Manually placed")
+    engine = component_from_catalog("engine")
+    engine.placement = Placement(offset=(25.0, 3.0, -4.0))
+    craft.add_component(engine)
+
+    layout = layout_spacecraft(craft)
+
+    assert layout.camera_center[0] > 10.0
+    assert layout.camera_center[2] < -1.0
+    assert layout.bounding_radius > 10.0

@@ -9,11 +9,16 @@ from .analysis import (
     assess_mission,
 )
 from .components import (
+    Avionics,
+    Battery,
     Component,
     Engine,
     FuelTank,
+    LandingLeg,
     Payload,
     PowerSystem,
+    RcsThruster,
+    SolarPanel,
     component_from_catalog,
 )
 from .presets import load_spacecraft, save_spacecraft
@@ -49,10 +54,15 @@ __all__ = [
     "mass_properties",
     "static_tip_over_angle_deg",
     "Component",
+    "Avionics",
+    "Battery",
     "Engine",
     "FuelTank",
+    "LandingLeg",
     "Payload",
     "PowerSystem",
+    "RcsThruster",
+    "SolarPanel",
     "Spacecraft",
     "LunarOrbitBudget",
     "LunarReachability",
