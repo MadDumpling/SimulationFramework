@@ -16,11 +16,14 @@ A reusable Python template for building interactive simulations with Taichi. The
 
 ## Spacecraft Designer MVP
 
-The application includes a separate **Spacecraft Designer** panel for assembling
+The application opens directly into the **Spacecraft Designer** for assembling
 engines, propellant tanks, payloads, and power systems. Component properties can
 be edited directly; mass, ideal single-stage delta-v, TWR, burn time, and power
 balance update as the design changes. The panel also includes a schematic preview
-and JSON save/load controls. Its starter design is stored in
+and JSON save/load controls. Select a component in the assembly list and move it
+around the schematic with **W/A/S/D**; layout positions are saved with the design.
+The bouncing-balls and boids examples are no longer launched by default. The
+starter spacecraft design is stored in
 [presets/spacecraft/spacecraft_mvp.json](presets/spacecraft/spacecraft_mvp.json).
 
 The **Run Lunar Mission Simulation** workflow takes a UTC departure date and
