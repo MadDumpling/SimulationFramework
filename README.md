@@ -66,6 +66,22 @@ Definitions cover:
 The panel edits stage, data quality/source and residual propellant. The rest is
 set in the JSON design file (schema v2; v1 files still load).
 
+## Apollo LM reference vehicle
+
+**Load Apollo LM** loads the Apollo Lunar Module descent stage
+([presets/spacecraft/apollo_lm.json](presets/spacecraft/apollo_lm.json)), built
+from [LUNAR_DATA.md](LUNAR_DATA.md). Its ideal descent delta-v (2,033 m/s) agrees
+with the published 2,004 m/s budget to 1.4%. Only values the data package
+supports are entered, as `estimated` until checked against primary sources; the
+readiness panel still blocks on the two items the package could not find
+(allowable touchdown tilt/rate and engine ground clearance). The suspect
+4,932 kg Apollo 11 touchdown mass is deliberately not used.
+
+`spacecraft/reference_data.py` holds the Apollo 11 site, GRGM1200A gravity,
+SLDEM2015 terrain, descent profile, proposed touchdown limits, touchdown
+reconstructions, and the data-gap register, each with provenance. The
+simulation does not consume them yet.
+
 ## Project structure
 
 ```text
@@ -77,6 +93,8 @@ spacecraft/              Domain model (no UI/GL imports)
   vehicle.py             Spacecraft assembly, landing gear, attitude limits
   mass_properties.py     Mass, centre of mass, inertia, static tip-over angle
   readiness.py           Reports missing/untraceable vehicle data
+  apollo_lm.py           Apollo LM reference vehicle builder
+  reference_data.py      Apollo 11 site, gravity, terrain, descent, validation data
   analysis.py            Ideal performance and mission budgets
   geometry.py            3D layout: primitive meshes + per-part transforms
   mission.py, lunar.py   Lambert transfer + ephemeris propagation

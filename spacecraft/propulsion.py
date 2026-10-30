@@ -22,14 +22,25 @@ class ThrottleSpec:
     rows are ``(throttle, mass_flow_fraction, vacuum_isp_fraction)``; with no
     curve the engine is modelled as ideal (mass flow proportional to throttle,
     constant Isp), which is an assumption the readiness report flags.
+
+    ``excluded_ranges`` are open ``(low, high)`` throttle intervals the engine
+    must not be operated in (e.g. the Apollo LM descent engine's 65%-92.5%
+    non-operating region); their endpoints remain valid operating points.
     """
 
     min_fraction: float | None = None
     max_fraction: float | None = None
     curve: tuple[tuple[float, float, float], ...] = ()
+    excluded_ranges: tuple[tuple[float, float], ...] = ()
 
     def __post_init__(self) -> None:
         self.curve = tuple(tuple(float(v) for v in row) for row in self.curve)
+        self.excluded_ranges = tuple(
+            tuple(float(v) for v in row) for row in self.excluded_ranges
+        )
+        for row in self.excluded_ranges:
+            if len(row) != 2 or not all(math.isfinite(v) and v > 0.0 for v in row) or row[0] >= row[1]:
+                raise ValueError("excluded throttle ranges must be (low, high) with 0 < low < high")
         for name, value in (("min_fraction", self.min_fraction), ("max_fraction", self.max_fraction)):
             if value is not None and (not math.isfinite(value) or value <= 0.0):
                 raise ValueError(f"throttle {name} must be a finite positive number")
@@ -65,6 +76,12 @@ class ThrottleSpec:
                 raise ValueError(
                     f"throttle {throttle:.3f} is outside the engine range "
                     f"{self.min_fraction:.3f}-{self.max_fraction:.3f}"
+                )
+        for low, high in self.excluded_ranges:
+            if low < throttle < high:
+                raise ValueError(
+                    f"throttle {throttle:.3f} is in the non-operating region "
+                    f"{low:.3f}-{high:.3f}"
                 )
         if not self.curve:
             return throttle, 1.0

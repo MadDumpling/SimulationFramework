@@ -177,3 +177,18 @@ def test_residual_propellant_edit_changes_usable_propellant(tmp_path):
 
     assert tank.residual_propellant == 500.0
     assert ui.analysis.fuel_mass == before - 500.0
+
+
+def test_load_apollo_lm_replaces_design_without_changing_save_path(tmp_path):
+    events = EventBus()
+    selected = []
+    events.subscribe("component.selected", selected.append)
+    path = tmp_path / "design.json"
+    ui = SpacecraftDesignerUI(events, preset_path=path)
+
+    ui.load_apollo_lm()
+
+    assert ui.spacecraft.name.startswith("Apollo Lunar Module")
+    assert ui.preset_path == path
+    assert ui.selected_id is None and selected == [None]
+    assert ui.analysis.fuel_mass == 7_295.0

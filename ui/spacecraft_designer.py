@@ -23,6 +23,7 @@ from spacecraft.components import (
     component_to_dict,
 )
 from spacecraft.mission import MissionSimulationResult, run_lunar_flyby_simulation
+from spacecraft.apollo_lm import PRESET_PATH as APOLLO_LM_PRESET
 from spacecraft.provenance import QUALITIES
 from spacecraft.readiness import assess_definition
 from spacecraft.presets import load_spacecraft, save_spacecraft
@@ -94,6 +95,7 @@ class SpacecraftDesignerUI:
                 dpg.add_button(label="Save Design", callback=self.save)
                 dpg.add_button(label="Load Design", callback=self.load)
                 dpg.add_button(label="Clear Assembly", callback=self.clear)
+                dpg.add_button(label="Load Apollo LM", callback=self.load_apollo_lm)
             dpg.add_text("Viewport", bullet=True)
             dpg.add_slider_float(
                 label="Exploded view",
@@ -466,6 +468,17 @@ class SpacecraftDesignerUI:
         self.events.publish("spacecraft.updated", self.spacecraft)
         self._rebuild_component_controls()
         self.refresh()
+
+    def load_apollo_lm(self, sender=None, app_data=None, user_data=None):
+        """Load the Apollo LM reference vehicle without changing the save path."""
+        self.spacecraft = load_spacecraft(APOLLO_LM_PRESET)
+        self.selected_id = None
+        self.events.publish("component.selected", None)
+        self.events.publish("spacecraft.updated", self.spacecraft)
+        self._invalidate_mission_result()
+        self._rebuild_component_controls()
+        self.refresh()
+        self.events.publish("view.reset_camera")
 
     def clear(self, sender=None, app_data=None, user_data=None):
         self.spacecraft = Spacecraft(self.spacecraft.name)
