@@ -40,6 +40,7 @@ class DesignerApplication:
         self._mission_started_at = None
         self._banner_second = None
         self._held_banner = None  # verdict banner waiting for the animation to catch up
+        self._pending_result_cue = None
 
         self._drag = None
         self._drag_distance = 0.0
@@ -94,6 +95,7 @@ class DesignerApplication:
 
     def _reset_flight(self):
         self._held_banner = None
+        self._pending_result_cue = None
         self.viewport.reset_flight()
         self.audio.stop()
         self._set_banner(" ", outcome.BLUE)
@@ -120,6 +122,7 @@ class DesignerApplication:
 
     def _on_mission_started(self, liftoff=True, has_thrust=True):
         self._held_banner = None
+        self._pending_result_cue = None
         self.viewport.start_flight(liftoff, has_thrust)
         if liftoff and has_thrust:
             self._play_audio("takeoff")
@@ -135,9 +138,26 @@ class DesignerApplication:
         self.designer.poll_mission()
         self._update_progress_banner()
         self.viewport.update(dt)
+        self._play_terminal_result_cue()
         if self._held_banner is not None and not self.viewport.flight.pending:
             self._set_banner(*self._held_banner)  # the verdict is now on screen
             self._held_banner = None
+
+    def _play_terminal_result_cue(self):
+        if self._pending_result_cue is None:
+            return
+        terminal_state, cue = self._pending_result_cue
+        animation = self.viewport.flight
+        reached_terminal = (
+            animation.state == terminal_state
+            and (
+                terminal_state != flight.NO_LIFTOFF
+                or animation.finished
+            )
+        )
+        if reached_terminal:
+            self._pending_result_cue = None
+            self._play_audio(cue)
 
     def _update_progress_banner(self):
         """Tick the elapsed time while the simulation is still running."""
@@ -152,9 +172,16 @@ class DesignerApplication:
 
     def _on_mission_completed(self, result):
         verdict = outcome.flight_outcome(result)
-        self._play_audio("success" if verdict == flight.LAND else "failure")
+        if verdict == flight.LAND:
+            terminal_state, cue = flight.LANDED, "success"
+        elif verdict == flight.FALL:
+            terminal_state, cue = flight.CRASHED, "failure"
+        else:
+            terminal_state, cue = flight.LOST, "failure"
         if self.viewport.flight.state == flight.NO_LIFTOFF:
+            self._pending_result_cue = (flight.NO_LIFTOFF, "failure")
             return  # the vehicle never left the pad; the banner already says why
+        self._pending_result_cue = (terminal_state, cue)
         self.viewport.finish_flight(verdict)
         banner = outcome.verdict_banner(result, verdict)
         if self.viewport.flight.pending:
@@ -165,6 +192,7 @@ class DesignerApplication:
     def _on_mission_failed(self, error):
         # An error is not a verdict on the vehicle: return to the pad and say so.
         self._held_banner = None
+        self._pending_result_cue = None
         self.viewport.reset_flight()
         self.audio.stop()
         self._set_banner(*outcome.error_banner(error))

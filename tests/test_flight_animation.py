@@ -690,6 +690,9 @@ def test_app_plays_takeoff_and_failure_cues(app):
     application.events.publish("mission.started", True, True)
     application.events.publish("mission.completed", make_result(success=False))
 
+    assert application.audio.played == ["takeoff"]
+    run_viewport(application, 25.0)
+    assert application.viewport.flight.state == f.LOST
     assert application.audio.played == ["takeoff", "failure"]
 
 
@@ -745,11 +748,12 @@ def test_app_lands_on_success_and_says_it_is_an_illustration(app):
     application.events.publish("mission.started", True, True)
     run_viewport(application, 6.0)
     application.events.publish("mission.completed", make_result(success=True))
+    assert application.audio.played == ["takeoff"]
     run_viewport(application, f.LAND_TIME + 1.0)
 
     assert application.viewport.flight.state == f.LANDED
     assert banners[-1].startswith("REACHED THE MOON") and "illustration" in banners[-1]
-    assert application.audio.played[-1] == "success"
+    assert application.audio.played == ["takeoff", "success"]
 
 
 def test_app_shows_a_fail_state_for_each_failure(app):
@@ -762,15 +766,18 @@ def test_app_shows_a_fail_state_for_each_failure(app):
         application.events.publish("mission.started", True, True)
         run_viewport(application, 6.0)
         application.events.publish("mission.completed", result)
+        assert application.audio.played[-1] == "takeoff"
         run_viewport(application, 25.0)
         assert application.viewport.flight.state == final_state
         assert "MISSION FAILED" in banners[-1] and wording in banners[-1]
+        assert application.audio.played[-1] == "failure"
 
     application.events.publish("mission.started", False, True)
     run_viewport(application, 4.0)
     application.events.publish("mission.completed", make_result(simulated=False))
     assert application.viewport.flight.state == f.NO_LIFTOFF
     assert "cannot lift off" in banners[-1]
+    application.step_flight(1 / 30)
     assert application.audio.played[-1] == "failure"
 
 
