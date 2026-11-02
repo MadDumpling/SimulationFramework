@@ -1,3 +1,7 @@
+# DISCLAIMER
+The project has been moved to https://github.com/MadDumpling/Celeste-SpaceWorks for active development. 
+
+
 # Spacecraft Configurator
 
 An interactive spacecraft mission-design and analysis platform. A DearPyGui panel edits the
