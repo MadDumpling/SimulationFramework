@@ -1,0 +1,116 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 2576 >>
+stream
+BT
+/F1 9 Tf
+50 810 Td
+(CELESTE SPACEWORKS - MISSION SCREENING REPORT) Tj
+0 -18 Td
+(Page 1) Tj
+0 -24 Td
+(CELESTE SPACEWORKS \227 MISSION SCREENING REPORT) Tj
+0 -14 Td
+(Vehicle: Lunar-capable demo \(illustrative\)) Tj
+0 -14 Td
+(Generated: 2026-10-30 23:57:42 UTC) Tj
+0 -14 Td
+(Selected analysis target: Low Earth Orbit) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(This is an educational engineering-screening report, not flight certification.) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(MISSION STATUS) Tj
+0 -14 Td
+(Trajectory has not been run; this is a preflight screening report.) Tj
+0 -14 Td
+(Selected mission target: Low Earth Orbit) Tj
+0 -14 Td
+(Approximate target delta-v budget: 9.40 km/s) Tj
+0 -14 Td
+(Estimated vehicle delta-v: 12.04 km/s) Tj
+0 -14 Td
+(Initial thrust-to-weight: 4.819) Tj
+0 -14 Td
+(Power margin: +2.05 kW) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(RANKED DESIGN ADVISOR) Tj
+0 -14 Td
+(1. [HIGH] Ideal delta-v budget is short) Tj
+0 -14 Td
+(   Evidence: Available 12.04 km/s; screening requirement 12.60 km/s; shortfall 0.56 km/s.) Tj
+0 -14 Td
+(   Suggested action: Increase usable compatible propellant or engine Isp, then recheck wet mass and) Tj
+0 -14 Td
+(   liftoff TWR.) Tj
+0 -14 Td
+(2. [MEDIUM] Landing-simulation inputs are incomplete) Tj
+0 -14 Td
+(   Evidence: Lunar-capable demo \(illustrative\): no landing gear / contact envelope defined; Lunar-) Tj
+0 -14 Td
+(   capable demo \(illustrative\): allowable attitude \(tilt\) and angular rate not fully specified; Demo) Tj
+0 -14 Td
+(   heavy engine: exit area or sea-level thrust unknown; cannot correct for ambient pressure; and 23) Tj
+0 -14 Td
+(   more blocking definition gap\(s\)) Tj
+0 -14 Td
+(   Suggested action: Supply the missing landing-gear, attitude-control, and engine-envelope data) Tj
+0 -14 Td
+(   before making powered-descent or touchdown claims.) Tj
+0 -14 Td
+(3. [MEDIUM] Vehicle center of mass is unknown) Tj
+0 -14 Td
+(   Evidence: At least one component with nonzero mass lacks center-of-mass data.) Tj
+0 -14 Td
+(   Suggested action: Enter component center-of-mass values to enable aggregate balance and stability) Tj
+0 -14 Td
+(   checks.) Tj
+0 -14 Td
+(4. [LOW] Vehicle inputs are not fully traceable) Tj
+0 -14 Td
+(   Evidence: 14 vehicle or component definition\(s\) use illustrative or estimated data.) Tj
+0 -14 Td
+(   Suggested action: Replace showcase values with sourced data and record source revision and) Tj
+0 -14 Td
+(   uncertainty where available.) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(Rule-based screening advice only; it is not flight certification or a real-vehicle design) Tj
+0 -14 Td
+(   prescription.) Tj
+0 -14 Td
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000216 00000 n 
+0000000342 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /Info << /Title (Celeste SpaceWorks Mission Screening Report) /Author (Celeste SpaceWorks) >> >>
+startxref
+2970
+%%EOF
